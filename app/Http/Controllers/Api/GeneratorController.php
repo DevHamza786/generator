@@ -131,7 +131,7 @@ class GeneratorController extends Controller
             $currentTime = now();
 
             foreach ($data['data'] as $writeData) {
-                // Check if we should save this data (every 30 seconds)
+                // Get the last saved data for this generator
                 $lastSaved = GeneratorWriteLog::where('generator_id', $writeData['id'])
                     ->latest('write_timestamp')
                     ->first();
@@ -142,9 +142,17 @@ class GeneratorController extends Controller
                     // First time saving this generator
                     $shouldSave = true;
                 } else {
-                    // Check if 30 seconds have passed since last save
-                    $timeDiff = $currentTime->diffInSeconds($lastSaved->write_timestamp);
-                    $shouldSave = $timeDiff >= 30;
+                    // Check if data has changed
+                    $dataChanged = $this->hasDataChanged($writeData, $lastSaved);
+
+                    if ($dataChanged) {
+                        // Data changed, save immediately
+                        $shouldSave = true;
+                    } else {
+                        // Data is same, check if 30 seconds have passed
+                        $timeDiff = $currentTime->diffInSeconds($lastSaved->write_timestamp);
+                        $shouldSave = $timeDiff >= 30;
+                    }
                 }
 
                 if ($shouldSave) {
@@ -187,6 +195,33 @@ class GeneratorController extends Controller
                 'status_code' => 500
             ], 500);
         }
+    }
+
+    /**
+     * Check if the new data has changed compared to the last saved data
+     */
+    private function hasDataChanged($newData, $lastSaved)
+    {
+        $fieldsToCompare = [
+            'PS', 'FL', 'BV', 'LV1', 'LV2', 'LV3', 'LV12', 'LV23', 'LV31',
+            'LI1', 'LI2', 'LI3', 'Lf1', 'Lf2', 'Lf3', 'Lpf1', 'Lpf2', 'Lpf3',
+            'Lkva1', 'Lkva2', 'Lkva3'
+        ];
+
+        foreach ($fieldsToCompare as $field) {
+            $newValue = $newData[$field] ?? 0;
+            $oldValue = $lastSaved->$field ?? 0;
+
+            // Convert boolean to integer for comparison
+            if (is_bool($newValue)) $newValue = $newValue ? 1 : 0;
+            if (is_bool($oldValue)) $oldValue = $oldValue ? 1 : 0;
+
+            if ($newValue != $oldValue) {
+                return true; // Data has changed
+            }
+        }
+
+        return false; // No changes detected
     }
 
     /**
