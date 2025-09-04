@@ -63,45 +63,38 @@ class GeneratorController extends Controller
             $savedCount = 0;
 
             foreach ($data['data'] as $logData) {
-                // Check for duplicate entry
-                $existingLog = GeneratorLog::where('generator_id', $logData['id'])
-                    ->where('log_timestamp', $this->parseTimestamp($logData))
-                    ->first();
-
-                if (!$existingLog) {
-                    GeneratorLog::create([
-                        'generator_id' => $logData['id'],
-                        'client' => $data['client'],
-                        'PS' => $logData['PS'] ?? false,
-                        'FL' => $logData['FL'] ?? 0,
-                        'GS' => $logData['GS'] ?? false,
-                        'yy' => $logData['yy'] ?? 0,
-                        'mm' => $logData['mm'] ?? 0,
-                        'dd' => $logData['dd'] ?? 0,
-                        'hm' => $logData['hm'] ?? 0,
-                        'BV' => $logData['BV'] ?? 0,
-                        'LV1' => $logData['LV1'] ?? 0,
-                        'LV2' => $logData['LV2'] ?? 0,
-                        'LV3' => $logData['LV3'] ?? 0,
-                        'LV12' => $logData['LV12'] ?? 0,
-                        'LV23' => $logData['LV23'] ?? 0,
-                        'LV31' => $logData['LV31'] ?? 0,
-                        'LI1' => $logData['LI1'] ?? 0,
-                        'LI2' => $logData['LI2'] ?? 0,
-                        'LI3' => $logData['LI3'] ?? 0,
-                        'Lf1' => $logData['Lf1'] ?? 0,
-                        'Lf2' => $logData['Lf2'] ?? 0,
-                        'Lf3' => $logData['Lf3'] ?? 0,
-                        'Lpf1' => $logData['Lpf1'] ?? 0,
-                        'Lpf2' => $logData['Lpf2'] ?? 0,
-                        'Lpf3' => $logData['Lpf3'] ?? 0,
-                        'Lkva1' => $logData['Lkva1'] ?? 0,
-                        'Lkva2' => $logData['Lkva2'] ?? 0,
-                        'Lkva3' => $logData['Lkva3'] ?? 0,
-                        'log_timestamp' => $this->parseTimestamp($logData),
-                    ]);
-                    $savedCount++;
-                }
+                GeneratorLog::create([
+                    'generator_id' => $logData['id'],
+                    'client' => $data['client'],
+                    'PS' => $logData['PS'] ?? false,
+                    'FL' => $logData['FL'] ?? 0,
+                    'GS' => $logData['GS'] ?? false,
+                    'yy' => $logData['yy'] ?? 0,
+                    'mm' => $logData['mm'] ?? 0,
+                    'dd' => $logData['dd'] ?? 0,
+                    'hm' => $logData['hm'] ?? 0,
+                    'BV' => $logData['BV'] ?? 0,
+                    'LV1' => $logData['LV1'] ?? 0,
+                    'LV2' => $logData['LV2'] ?? 0,
+                    'LV3' => $logData['LV3'] ?? 0,
+                    'LV12' => $logData['LV12'] ?? 0,
+                    'LV23' => $logData['LV23'] ?? 0,
+                    'LV31' => $logData['LV31'] ?? 0,
+                    'LI1' => $logData['LI1'] ?? 0,
+                    'LI2' => $logData['LI2'] ?? 0,
+                    'LI3' => $logData['LI3'] ?? 0,
+                    'Lf1' => $logData['Lf1'] ?? 0,
+                    'Lf2' => $logData['Lf2'] ?? 0,
+                    'Lf3' => $logData['Lf3'] ?? 0,
+                    'Lpf1' => $logData['Lpf1'] ?? 0,
+                    'Lpf2' => $logData['Lpf2'] ?? 0,
+                    'Lpf3' => $logData['Lpf3'] ?? 0,
+                    'Lkva1' => $logData['Lkva1'] ?? 0,
+                    'Lkva2' => $logData['Lkva2'] ?? 0,
+                    'Lkva3' => $logData['Lkva3'] ?? 0,
+                    'log_timestamp' => $this->parseTimestamp($logData),
+                ]);
+                $savedCount++;
             }
 
             if ($savedCount === 0) {
