@@ -3,12 +3,15 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class GeneratorLog extends Model
 {
     protected $fillable = [
+        'client_id',
         'generator_id',
-        'client',
+        'generator_id_old', // Keep old field for backward compatibility
+        'client', // Keep old field for backward compatibility
         'PS',
         'FL',
         'GS',
@@ -68,8 +71,34 @@ class GeneratorLog extends Model
         'log_timestamp' => 'datetime',
     ];
 
+    /**
+     * Get the client that owns this log
+     */
+    public function client(): BelongsTo
+    {
+        return $this->belongsTo(Client::class);
+    }
+
+    /**
+     * Get the generator that owns this log
+     */
+    public function generator(): BelongsTo
+    {
+        return $this->belongsTo(Generator::class);
+    }
+
     public function scopeLatest($query, $limit = 20)
     {
         return $query->orderBy('log_timestamp', 'desc')->limit($limit);
+    }
+
+    public function scopeByClient($query, $clientId)
+    {
+        return $query->where('client_id', $clientId);
+    }
+
+    public function scopeByGenerator($query, $generatorId)
+    {
+        return $query->where('generator_id', $generatorId);
     }
 }

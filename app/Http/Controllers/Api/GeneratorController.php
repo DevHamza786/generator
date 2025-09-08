@@ -7,6 +7,8 @@ use Illuminate\Http\Request;
 use App\Models\GeneratorStatus;
 use App\Models\GeneratorLog;
 use App\Models\GeneratorWriteLog;
+use App\Models\Client;
+use App\Models\Generator;
 
 class GeneratorController extends Controller
 {
@@ -62,10 +64,18 @@ class GeneratorController extends Controller
 
             $savedCount = 0;
 
+            // Get or create client
+            $client = $this->getOrCreateClient($data['client']);
+
             foreach ($data['data'] as $logData) {
+                // Get or create generator
+                $generator = $this->getOrCreateGenerator($client->id, $logData['id']);
+
                 GeneratorLog::create([
-                    'generator_id' => $logData['id'],
-                    'client' => $data['client'],
+                    'client_id' => $client->id,
+                    'generator_id' => $logData['id'], // Keep as varchar for now
+                    'generator_id_old' => $logData['id'], // Keep old field for backward compatibility
+                    'client' => $data['client'], // Keep old field for backward compatibility
                     'PS' => $logData['PS'] ?? false,
                     'FL' => $logData['FL'] ?? 0,
                     'GS' => $logData['GS'] ?? false,
@@ -97,18 +107,14 @@ class GeneratorController extends Controller
                 $savedCount++;
             }
 
-            if ($savedCount === 0) {
-                return response()->json([
-                    'status_code' => 200
-                ], 200);
-            }
-
             return response()->json([
-                'status_code' => 200
+                'status_code' => 200,
+                'message' => "Saved {$savedCount} log entries"
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
-                'status_code' => 500
+                'status_code' => 500,
+                'message' => 'Error saving log data: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -130,7 +136,13 @@ class GeneratorController extends Controller
             $savedCount = 0;
             $currentTime = now();
 
+            // Get or create client
+            $client = $this->getOrCreateClient($data['client']);
+
             foreach ($data['data'] as $writeData) {
+                // Get or create generator
+                $generator = $this->getOrCreateGenerator($client->id, $writeData['id']);
+
                 // Get the last saved data for this generator
                 $lastSaved = GeneratorWriteLog::where('generator_id', $writeData['id'])
                     ->latest('write_timestamp')
@@ -157,8 +169,10 @@ class GeneratorController extends Controller
 
                 if ($shouldSave) {
                     GeneratorWriteLog::create([
-                        'generator_id' => $writeData['id'],
-                        'client' => $data['client'],
+                        'client_id' => $client->id,
+                        'generator_id' => $writeData['id'], // Keep as varchar for now
+                        'generator_id_old' => $writeData['id'], // Keep old field for backward compatibility
+                        'client' => $data['client'], // Keep old field for backward compatibility
                         'PS' => $writeData['PS'] ?? false,
                         'FL' => $writeData['FL'] ?? 0,
                         'BV' => $writeData['BV'] ?? 0,
@@ -187,12 +201,14 @@ class GeneratorController extends Controller
             }
 
             return response()->json([
-                'status_code' => 200
+                'status_code' => 200,
+                'message' => "Saved {$savedCount} write log entries"
             ], 200);
 
         } catch (\Exception $e) {
             return response()->json([
-                'status_code' => 500
+                'status_code' => 500,
+                'message' => 'Error saving write log data: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -222,6 +238,52 @@ class GeneratorController extends Controller
         }
 
         return false; // No changes detected
+    }
+
+    /**
+     * Get or create client based on client_id
+     */
+    private function getOrCreateClient(string $clientId)
+    {
+        $client = Client::where('client_id', $clientId)->first();
+
+        if (!$client) {
+            $clientName = Client::extractClientName($clientId);
+            $clientNumber = Client::extractClientNumber($clientId);
+
+            $client = Client::create([
+                'name' => $clientName,
+                'client_id' => $clientId,
+                'display_name' => ucfirst($clientName) . ' #' . $clientNumber,
+                'description' => "Client {$clientName} with ID {$clientNumber}",
+                'is_active' => true
+            ]);
+        }
+
+        return $client;
+    }
+
+    /**
+     * Get or create generator based on client_id and generator_id
+     */
+    private function getOrCreateGenerator(int $clientId, string $generatorId)
+    {
+        $generator = Generator::where('client_id', $clientId)
+            ->where('generator_id', $generatorId)
+            ->first();
+
+        if (!$generator) {
+            $generator = Generator::create([
+                'client_id' => $clientId,
+                'generator_id' => $generatorId,
+                'name' => "Generator {$generatorId}",
+                'description' => "Generator with ID {$generatorId}",
+                'location' => 'Unknown',
+                'is_active' => true
+            ]);
+        }
+
+        return $generator;
     }
 
     /**
