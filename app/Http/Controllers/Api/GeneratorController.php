@@ -109,7 +109,7 @@ class GeneratorController extends Controller
 
             return response()->json([
                 'status_code' => 200,
-                'message' => "Saved {$savedCount} log entries"
+                // 'message' => "Saved {$savedCount} log entries"
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
@@ -202,7 +202,7 @@ class GeneratorController extends Controller
 
             return response()->json([
                 'status_code' => 200,
-                'message' => "Saved {$savedCount} write log entries"
+                // 'message' => "Saved {$savedCount} write log entries"
             ], 200);
 
         } catch (\Exception $e) {
@@ -268,11 +268,11 @@ class GeneratorController extends Controller
      */
     private function getOrCreateGenerator(int $clientId, string $generatorId)
     {
-        $generator = Generator::where('client_id', $clientId)
-            ->where('generator_id', $generatorId)
-            ->first();
+        // First, try to find existing generator by generator_id only (since it's unique)
+        $generator = Generator::where('generator_id', $generatorId)->first();
 
         if (!$generator) {
+            // Generator doesn't exist, create new one
             $generator = Generator::create([
                 'client_id' => $clientId,
                 'generator_id' => $generatorId,
@@ -281,6 +281,12 @@ class GeneratorController extends Controller
                 'location' => 'Unknown',
                 'is_active' => true
             ]);
+        } else {
+            // Generator exists, but check if it belongs to the same client
+            if ($generator->client_id !== $clientId) {
+                // Update the client_id if it's different (generator moved to different client)
+                $generator->update(['client_id' => $clientId]);
+            }
         }
 
         return $generator;
