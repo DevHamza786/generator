@@ -520,7 +520,7 @@
                     <div class="login-header">
                         <div class="logo-container">
                             <div class="logo-icon">
-                                <i class="fas fa-bolt"></i>
+                            <i class="fas fa-bolt"></i>
                             </div>
                         </div>
                         <h1 class="login-title">Generator Monitor</h1>
@@ -592,15 +592,15 @@
                                 @enderror
                             </div>
 
-                            <div class="form-check">
-                                <input class="form-check-input"
-                                       type="checkbox"
-                                       id="remember"
+                                <div class="form-check">
+                                    <input class="form-check-input"
+                                           type="checkbox"
+                                           id="remember"
                                        name="remember"
                                        {{ old('remember') ? 'checked' : '' }}>
-                                <label class="form-check-label" for="remember">
+                                    <label class="form-check-label" for="remember">
                                     Keep me signed in
-                                </label>
+                                    </label>
                             </div>
 
                             <div class="d-grid">
@@ -634,8 +634,8 @@
                 const email = emailField.value.trim();
                 const password = passwordField.value.trim();
 
-                if (!email || !password) {
-                    e.preventDefault();
+            if (!email || !password) {
+                e.preventDefault();
                     showNotification('Please fill in all required fields.', 'error');
                     return false;
                 }
@@ -644,7 +644,7 @@
                     e.preventDefault();
                     showNotification('Please enter a valid email address.', 'error');
                     emailField.focus();
-                    return false;
+                return false;
                 }
 
                 // Show loading state

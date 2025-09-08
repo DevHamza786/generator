@@ -381,6 +381,12 @@
                 return;
             }
 
+            // Get current theme
+            const isDarkTheme = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+            const textColor = isDarkTheme ? 'rgba(255, 255, 255, 0.9)' : 'rgba(30, 30, 44, 0.8)';
+            const gridColor = isDarkTheme ? 'rgba(255, 255, 255, 0.1)' : 'rgba(30, 30, 44, 0.1)';
+            const tickColor = isDarkTheme ? 'rgba(255, 255, 255, 0.7)' : 'rgba(30, 30, 44, 0.6)';
+
             performanceChart = new Chart(ctx.getContext('2d'), {
             type: 'line',
             data: {
@@ -389,23 +395,26 @@
                     label: 'Fuel Level (%)',
                     data: [],
                     borderColor: '#34B1AA',
-                    backgroundColor: 'rgba(52, 177, 170, 0.2)',
+                    backgroundColor: 'rgba(52, 177, 170, 0.3)',
                     tension: 0.4,
-                    fill: true
+                    fill: true,
+                    borderWidth: 2
                 }, {
                     label: 'Battery Voltage (V)',
                     data: [],
                     borderColor: '#F29F67',
-                    backgroundColor: 'rgba(242, 159, 103, 0.2)',
+                    backgroundColor: 'rgba(242, 159, 103, 0.3)',
                     tension: 0.4,
-                    fill: true
+                    fill: true,
+                    borderWidth: 2
                 }, {
                     label: 'Line Voltage (V)',
                     data: [],
                     borderColor: '#3B8FF3',
-                    backgroundColor: 'rgba(59, 143, 243, 0.2)',
+                    backgroundColor: 'rgba(59, 143, 243, 0.3)',
                     tension: 0.4,
-                    fill: true
+                    fill: true,
+                    borderWidth: 2
                 }]
             },
             options: {
@@ -414,31 +423,55 @@
                 plugins: {
                     legend: {
                         labels: {
-                            color: 'white'
+                            color: textColor,
+                            font: {
+                                weight: '500'
+                            }
                         }
                     }
                 },
                 scales: {
                     x: {
                         ticks: {
-                            color: 'rgba(255, 255, 255, 0.7)'
+                            color: tickColor,
+                            font: {
+                                size: 11
+                            }
                         },
                         grid: {
-                            color: 'rgba(255, 255, 255, 0.1)'
+                            color: gridColor,
+                            drawBorder: false
+                        },
+                        border: {
+                            display: false
                         }
                     },
                     y: {
                         ticks: {
-                            color: 'rgba(255, 255, 255, 0.7)'
+                            color: tickColor,
+                            font: {
+                                size: 11
+                            }
                         },
                         grid: {
-                            color: 'rgba(255, 255, 255, 0.1)'
+                            color: gridColor,
+                            drawBorder: false
+                        },
+                        border: {
+                            display: false
                         }
                     }
                 },
                 interaction: {
                     intersect: false,
                     mode: 'index'
+                },
+                elements: {
+                    point: {
+                        radius: 4,
+                        hoverRadius: 6,
+                        borderWidth: 2
+                    }
                 }
             }
         });
@@ -468,6 +501,24 @@
         }
 
         performanceChart.update('none');
+    }
+
+    function updateChartTheme() {
+        if (!performanceChart) return;
+
+        const isDarkTheme = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+        const textColor = isDarkTheme ? 'rgba(255, 255, 255, 0.9)' : 'rgba(30, 30, 44, 0.8)';
+        const gridColor = isDarkTheme ? 'rgba(255, 255, 255, 0.1)' : 'rgba(30, 30, 44, 0.1)';
+        const tickColor = isDarkTheme ? 'rgba(255, 255, 255, 0.7)' : 'rgba(30, 30, 44, 0.6)';
+
+        // Update chart colors
+        performanceChart.options.plugins.legend.labels.color = textColor;
+        performanceChart.options.scales.x.ticks.color = tickColor;
+        performanceChart.options.scales.x.grid.color = gridColor;
+        performanceChart.options.scales.y.ticks.color = tickColor;
+        performanceChart.options.scales.y.grid.color = gridColor;
+
+        performanceChart.update();
     }
 
         function refreshData() {
@@ -586,6 +637,20 @@
         }
 
         waitForChart();
+
+        // Listen for theme changes
+        const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.type === 'attributes' && mutation.attributeName === 'data-bs-theme') {
+                    updateChartTheme();
+                }
+            });
+        });
+
+        observer.observe(document.documentElement, {
+            attributes: true,
+            attributeFilter: ['data-bs-theme']
+        });
 
         // Update time every second (only time, no data refresh)
         setInterval(function() {

@@ -6,7 +6,7 @@
     <title>@yield('title', 'Generator Monitor') - Enterprise Portal</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="{{ asset('css/custom-theme.css') }}" rel="stylesheet">
     <style>
@@ -411,26 +411,61 @@
             font-size: 0.85rem;
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: var(--transition);
+        }
+
+        .badge-modern:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
         }
 
         .badge-success-modern {
             background: var(--success-gradient);
             color: white;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
         }
 
         .badge-danger-modern {
             background: var(--danger-gradient);
             color: white;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
         }
 
         .badge-warning-modern {
             background: var(--warning-gradient);
             color: white;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
         }
 
         .badge-info-modern {
             background: var(--secondary-gradient);
             color: white;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        .badge-primary-modern {
+            background: var(--primary-gradient);
+            color: white;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        .badge-secondary-modern {
+            background: var(--dark-gradient);
+            color: white;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Ensure badges are visible on both themes */
+        [data-bs-theme="light"] .badge-modern {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        [data-bs-theme="dark"] .badge-modern {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
         /* Animations */
@@ -953,11 +988,11 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
     <!-- Fallback Chart.js CDN -->
     <script>
         if (typeof Chart === 'undefined') {
-            document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.min.js"><\/script>');
+            document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"><\/script>');
         }
     </script>
     <script>
@@ -967,7 +1002,7 @@
                 console.error('Chart.js failed to load');
                 // Retry loading Chart.js
                 const script = document.createElement('script');
-                script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.min.js';
+                script.src = 'https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js';
                 script.onload = function() {
                     console.log('Chart.js loaded successfully');
                 };

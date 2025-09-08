@@ -124,8 +124,8 @@
                             <thead class="table-dark">
                                 <tr>
                                     <th>Write Timestamp</th>
-                                    <th>Generator ID</th>
                                     <th>Client</th>
+                                    <th>Generator ID</th>
                                     <th>Power Status</th>
                                     <th>Fuel Level</th>
                                     <th>Battery Voltage</th>
