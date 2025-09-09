@@ -187,6 +187,51 @@
         </div>
     </div>
 
+    <!-- Generator Power Control Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card card-modern animate-fadeInUp" style="animation-delay: 0.5s;">
+                <div class="card-header border-0 bg-transparent">
+                    <h5 class="mb-0 text-white">
+                        <i class="fas fa-power-off me-2"></i>
+                        Generator Power Control
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row" id="generatorPowerControls">
+                        @foreach($generators as $generator)
+                        <div class="col-lg-4 col-md-6 mb-3">
+                            <div class="generator-control-card p-3 rounded" style="background: var(--glass-bg); border: 1px solid rgba(255,255,255,0.1);">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <div>
+                                        <h6 class="mb-0 text-white">{{ $generator->name }}</h6>
+                                        <small class="text-white-50">{{ $generator->generator_id }}</small>
+                                    </div>
+                                    <div class="power-status-indicator" id="status-{{ $generator->generator_id }}">
+                                        <i class="fas fa-circle text-secondary"></i>
+                                    </div>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <small class="text-white-50">{{ $generator->client->display_name ?? 'Unknown Client' }}</small>
+                                    <div class="power-toggle-switch">
+                                        <label class="switch">
+                                            <input type="checkbox"
+                                                   class="power-toggle"
+                                                   data-generator-id="{{ $generator->generator_id }}"
+                                                   id="toggle-{{ $generator->generator_id }}">
+                                            <span class="slider round"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Charts and Data Tables -->
     <div class="row">
         <!-- Real-time Chart -->
@@ -361,6 +406,73 @@
             </div>
         </div>
     </div>
+@endsection
+
+@section('styles')
+<style>
+/* Power Toggle Switch Styles */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 24px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 24px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+input:checked + .slider {
+    background: linear-gradient(135deg, #28a745, #20c997);
+}
+
+input:checked + .slider:before {
+    transform: translateX(26px);
+}
+
+.power-status-indicator {
+    font-size: 12px;
+}
+
+.power-status-indicator.online {
+    color: #28a745 !important;
+}
+
+.power-status-indicator.offline {
+    color: #dc3545 !important;
+}
+
+.generator-control-card:hover {
+    background: rgba(255,255,255,0.15) !important;
+    transition: all 0.3s ease;
+}
+</style>
 @endsection
 
 @section('scripts')
@@ -662,5 +774,105 @@
             });
         }, 1000);
         });
+
+    // Power Control Functions
+    function loadPowerStatus() {
+        const generatorIds = [];
+        $('.power-toggle').each(function() {
+            generatorIds.push($(this).data('generator-id'));
+        });
+
+        if (generatorIds.length === 0) return;
+
+        $.post('{{ route("dashboard.power-status") }}', {
+            ids: generatorIds,
+            _token: '{{ csrf_token() }}'
+        }, function(response) {
+            if (response.success) {
+                Object.keys(response.data).forEach(function(generatorId) {
+                    const powerStatus = response.data[generatorId].power;
+                    const toggle = $('#toggle-' + generatorId);
+                    const statusIndicator = $('#status-' + generatorId);
+
+                    toggle.prop('checked', powerStatus);
+
+                    if (powerStatus) {
+                        statusIndicator.removeClass('offline').addClass('online');
+                        statusIndicator.find('i').removeClass('fa-circle').addClass('fa-circle');
+                    } else {
+                        statusIndicator.removeClass('online').addClass('offline');
+                        statusIndicator.find('i').removeClass('fa-circle').addClass('fa-circle');
+                    }
+                });
+            }
+        }).fail(function() {
+            console.error('Failed to load power status');
+        });
+    }
+
+    function toggleGeneratorPower(generatorId, power) {
+        $.post('{{ route("dashboard.toggle-power") }}', {
+            generator_id: generatorId,
+            power: power,
+            _token: '{{ csrf_token() }}'
+        }, function(response) {
+            if (response.success) {
+                const statusIndicator = $('#status-' + generatorId);
+
+                if (power) {
+                    statusIndicator.removeClass('offline').addClass('online');
+                } else {
+                    statusIndicator.removeClass('online').addClass('offline');
+                }
+
+                // Show success message
+                showNotification(response.message, 'success');
+            } else {
+                showNotification(response.message || 'Failed to update power status', 'error');
+                // Revert toggle state
+                $('#toggle-' + generatorId).prop('checked', !power);
+            }
+        }).fail(function() {
+            showNotification('Network error. Please try again.', 'error');
+            // Revert toggle state
+            $('#toggle-' + generatorId).prop('checked', !power);
+        });
+    }
+
+    function showNotification(message, type) {
+        // Create notification element
+        const notification = $(`
+            <div class="alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show position-fixed"
+                 style="top: 20px; right: 20px; z-index: 9999; min-width: 300px;">
+                <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'} me-2"></i>
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        `);
+
+        $('body').append(notification);
+
+        // Auto remove after 5 seconds
+        setTimeout(function() {
+            notification.alert('close');
+        }, 5000);
+    }
+
+    // Initialize power controls
+    $(document).ready(function() {
+        // Load initial power status
+        loadPowerStatus();
+
+        // Handle power toggle clicks
+        $('.power-toggle').on('change', function() {
+            const generatorId = $(this).data('generator-id');
+            const power = $(this).is(':checked');
+
+            toggleGeneratorPower(generatorId, power);
+        });
+
+        // Refresh power status every 30 seconds
+        setInterval(loadPowerStatus, 30000);
+    });
     </script>
 @endsection

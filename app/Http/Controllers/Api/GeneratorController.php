@@ -293,6 +293,49 @@ class GeneratorController extends Controller
     }
 
     /**
+     * Get power status for multiple generators by their IDs
+     */
+    public function getPowerStatus(Request $request)
+    {
+        try {
+            $data = $request->all();
+
+            if (!isset($data['ids']) || !is_array($data['ids'])) {
+                return response()->json([
+                    'status_code' => 400,
+                    'message' => 'Invalid request. Expected "ids" array.'
+                ], 400);
+            }
+
+            $generatorIds = $data['ids'];
+            $powerStatus = [];
+
+            foreach ($generatorIds as $generatorId) {
+                // Get the latest status for this generator
+                $status = GeneratorStatus::where('generator_id', $generatorId)
+                    ->latest('last_updated')
+                    ->first();
+
+                $powerStatus[$generatorId] = [
+                    'power' => $status ? $status->power : false
+                ];
+            }
+
+            return response()->json([
+                'status_code' => 200,
+                'data' => $powerStatus
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status_code' => 500,
+                'message' => 'Error getting power status: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+    /**
      * Parse timestamp from log data
      */
     private function parseTimestamp($logData)

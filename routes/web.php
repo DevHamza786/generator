@@ -19,4 +19,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/logs', [DashboardController::class, 'logs'])->name('logs');
     Route::get('/write-logs', [DashboardController::class, 'writeLogs'])->name('write-logs');
+
+    // Power control routes
+    Route::post('/dashboard/toggle-power', [DashboardController::class, 'togglePower'])->name('dashboard.toggle-power');
+    Route::post('/dashboard/power-status', [DashboardController::class, 'getPowerStatus'])->name('dashboard.power-status');
 });

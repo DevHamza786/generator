@@ -137,4 +137,92 @@ class DashboardController extends Controller
 
         return view('write-logs', compact('writeLogs', 'clients', 'writeLogGeneratorIds'));
     }
+
+    /**
+     * Toggle generator power status
+     */
+    public function togglePower(Request $request)
+    {
+        $request->validate([
+            'generator_id' => 'required|string',
+            'power' => 'required|in:true,false,1,0,"true","false"'
+        ]);
+
+        try {
+            $generatorId = $request->generator_id;
+            $power = filter_var($request->power, FILTER_VALIDATE_BOOLEAN);
+
+            // Check if generator exists
+            $generator = Generator::where('generator_id', $generatorId)->first();
+            if (!$generator) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Generator not found.'
+                ], 404);
+            }
+
+            // Update or create generator status
+            GeneratorStatus::updateOrCreate(
+                ['generator_id' => $generatorId],
+                [
+                    'power' => $power,
+                    'last_updated' => now()
+                ]
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => "Generator {$generatorId} power set to " . ($power ? 'ON' : 'OFF'),
+                'data' => [
+                    'generator_id' => $generatorId,
+                    'power' => $power
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error setting power status: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get power status for generators
+     */
+    public function getPowerStatus(Request $request)
+    {
+        try {
+            $generatorIds = $request->input('ids', []);
+
+            if (empty($generatorIds)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No generator IDs provided.'
+                ], 400);
+            }
+
+            $powerStatus = [];
+            foreach ($generatorIds as $generatorId) {
+                $status = GeneratorStatus::where('generator_id', $generatorId)
+                    ->latest('last_updated')
+                    ->first();
+
+                $powerStatus[$generatorId] = [
+                    'power' => $status ? $status->power : false
+                ];
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => $powerStatus
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error getting power status: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }
