@@ -28,5 +28,5 @@ Route::prefix('generator')->group(function () {
     Route::post('/save-write-logs', [GeneratorController::class, 'saveWriteLogData'])->name('api.generator.save-write-logs');
 
     // Power status endpoint
-    Route::get('/power-status', [GeneratorController::class, 'getPowerStatus'])->name('api.generator.power-status');
+    Route::post('/power-status', [GeneratorController::class, 'getPowerStatus'])->name('api.generator.power-status');
 });
