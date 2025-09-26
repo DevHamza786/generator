@@ -222,7 +222,7 @@
                                 <div class="generator-control-card">
                                     <div class="generator-card-header">
                                         <div class="generator-title-section">
-                                            <h6 class="generator-name">{{ $generator->name }}</h6>
+                                            <h6 class="generator-name" id="live-name-{{ $generator->generator_id }}">{{ $generator->name }}</h6>
                                             <small class="generator-id" id="live-id-{{ $generator->generator_id }}">{{ $generator->generator_id }}</small>
                                         </div>
                                         <div class="power-status-indicator" id="status-{{ $generator->generator_id }}">
@@ -898,12 +898,14 @@ input:checked + .slider:before {
             }
         });
 
-        // Update each generator card with live ID
+        // Update each generator card with live ID and name
         Object.keys(latestLogs).forEach(function(generatorId) {
             const liveIdElement = document.getElementById('live-id-' + generatorId);
+            const liveNameElement = document.getElementById('live-name-' + generatorId);
+
             if (liveIdElement) {
                 const log = latestLogs[generatorId];
-                // Update with live data - you can customize this based on what data you want to show
+                // Update with live data
                 liveIdElement.textContent = log.generator_id;
 
                 // Add a subtle animation to indicate update
@@ -913,7 +915,48 @@ input:checked + .slider:before {
                     liveIdElement.style.color = '#a0aec0';
                 }, 1000);
             }
+
+            if (liveNameElement) {
+                const log = latestLogs[generatorId];
+                // Generate a proper name based on the generator ID
+                const generatorName = generateGeneratorName(log.generator_id);
+                liveNameElement.textContent = generatorName;
+
+                // Add a subtle animation to indicate update
+                liveNameElement.style.transition = 'all 0.3s ease';
+                liveNameElement.style.color = '#48bb78';
+                setTimeout(function() {
+                    liveNameElement.style.color = '#ffffff';
+                }, 1000);
+            }
         });
+    }
+
+    function generateGeneratorName(generatorId) {
+        // Create meaningful names based on generator ID patterns
+        const id = generatorId.toLowerCase();
+
+        // Check for specific patterns and assign names
+        if (id.includes('492ff2e5')) return 'Resort 200kva';
+        if (id.includes('492ff2e6')) return 'Generator ID492ff2e6';
+        if (id.includes('492ff2e7')) return 'Generator ID492ff2e7';
+        if (id.includes('abc1234')) return 'Generator IDabc1234';
+        if (id.includes('abc567')) return 'Generator IDabc567';
+        if (id.includes('abc890')) return 'Generator IDabc890';
+        if (id.includes('1122334455')) return 'Generator ID1122334455';
+        if (id.includes('55da2f89')) return 'Generator ID55da2f89';
+        if (id.includes('42daf728')) return 'Generator ID42daf728';
+        if (id.includes('53da9f6e')) return 'Generator ID53da9f6e';
+        if (id.includes('44406481')) return 'Generator ID44406481';
+        if (id.includes('4a2f3a40')) return 'Generator ID4a2f3a40';
+        if (id.includes('4a2fc645')) return 'Generator ID4a2fc645';
+        if (id.includes('50da533a')) return 'Generator ID50da533a';
+        if (id.includes('54da27c2')) return 'Yacht 27kva';
+        if (id.includes('54daa3c8')) return 'Generator ID54daa3c8';
+        if (id.includes('bf822748')) return 'Generator IDbf822748';
+
+        // Default naming pattern for other IDs
+        return 'Generator ' + generatorId;
     }
 
         function refreshData() {
