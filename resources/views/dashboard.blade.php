@@ -932,32 +932,32 @@ input:checked + .slider:before {
         });
     }
 
-    function generateGeneratorName(generatorId) {
-        // Create meaningful names based on generator ID patterns
-        const id = generatorId.toLowerCase();
+     function generateGeneratorName(generatorId) {
+         // Create meaningful names based on generator ID patterns
+         const id = generatorId.toLowerCase();
 
-        // Check for specific patterns and assign names
-        if (id.includes('492ff2e5')) return 'Resort 200kva';
-        if (id.includes('492ff2e6')) return 'Generator ID492ff2e6';
-        if (id.includes('492ff2e7')) return 'Generator ID492ff2e7';
-        if (id.includes('abc1234')) return 'Generator IDabc1234';
-        if (id.includes('abc567')) return 'Generator IDabc567';
-        if (id.includes('abc890')) return 'Generator IDabc890';
-        if (id.includes('1122334455')) return 'Generator ID1122334455';
-        if (id.includes('55da2f89')) return 'Generator ID55da2f89';
-        if (id.includes('42daf728')) return 'Generator ID42daf728';
-        if (id.includes('53da9f6e')) return 'Generator ID53da9f6e';
-        if (id.includes('44406481')) return 'Generator ID44406481';
-        if (id.includes('4a2f3a40')) return 'Generator ID4a2f3a40';
-        if (id.includes('4a2fc645')) return 'Generator ID4a2fc645';
-        if (id.includes('50da533a')) return 'Generator ID50da533a';
-        if (id.includes('54da27c2')) return 'Yacht 27kva';
-        if (id.includes('54daa3c8')) return 'Generator ID54daa3c8';
-        if (id.includes('bf822748')) return 'Generator IDbf822748';
+         // Check for specific patterns and assign names
+         if (id.includes('492ff2e5')) return 'Resort 200kva';
+         if (id.includes('492ff2e6')) return 'Resort 200kva';
+         if (id.includes('492ff2e7')) return 'Resort 200kva';
+         if (id.includes('abc1234')) return 'Axact #100';
+         if (id.includes('abc567')) return 'Axact #101';
+         if (id.includes('abc890')) return 'Axact #102';
+         if (id.includes('1122334455')) return 'Axact #103';
+         if (id.includes('55da2f89')) return 'Axact #104';
+         if (id.includes('42daf728')) return 'Axact #105';
+         if (id.includes('53da9f6e')) return '400yardA 200kva';
+         if (id.includes('44406481')) return '400yardB 200kva';
+         if (id.includes('4a2f3a40')) return 'Yacht 500kva';
+         if (id.includes('4a2fc645')) return 'Yacht 500kva';
+         if (id.includes('50da533a')) return 'Crest Tower 250kva';
+         if (id.includes('54da27c2')) return 'Yacht 27kva';
+         if (id.includes('54daa3c8')) return '350kva Crest Tower';
+         if (id.includes('bf822748')) return '350kva Crest Tower';
 
-        // Default naming pattern for other IDs
-        return 'Generator ' + generatorId;
-    }
+         // Default naming pattern for other IDs
+         return 'Generator ' + generatorId;
+     }
 
         function refreshData() {
             // Show loading state
