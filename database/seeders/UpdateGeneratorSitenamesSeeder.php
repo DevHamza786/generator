@@ -17,11 +17,11 @@ class UpdateGeneratorSitenamesSeeder extends Seeder
         $generatorSitenames = [
             'IDbf822748' => '30th Street',
             'ID54daa3c8' => 'Resort 200 KVA',
-            'ID54da27c2' => 'Yacht 27 KVA',
+            'ID54da27c2' => 'Crest Tower 250 KVA',
             'ID4a2f3a40' => 'Yacht 500 KVA',
             'ID53da9f6e' => '4000 Yard 200 KVA',
             'ID44406481' => '4000 Yard 200 KVA',
-            'ID50da533a' => 'Crest Tower 250 KVA',
+            'ID50da533a' => 'Crest Tower 350 KVA',
             'ID350kva' => 'Crest Tower 350 KVA',
             // Additional mappings for any other IDs that might exist
             'ID492ff2e5' => 'Resort 200 KVA',
