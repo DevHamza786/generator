@@ -202,7 +202,9 @@
                             Showing {{ $writeLogs->firstItem() ?? 0 }} to {{ $writeLogs->lastItem() ?? 0 }} of {{ $writeLogs->total() }} write logs
                         </div>
                         <div>
-                            {{ $writeLogs->appends(request()->query())->links('vendor.pagination.bootstrap-4') }}
+                            @if($writeLogs->hasPages())
+                                {{ $writeLogs->appends(request()->query())->links('vendor.pagination.bootstrap-4') }}
+                            @endif
                         </div>
                     </div>
                 </div>

@@ -210,7 +210,9 @@
                             Showing {{ $logs->firstItem() ?? 0 }} to {{ $logs->lastItem() ?? 0 }} of {{ $logs->total() }} logs
                         </div>
                         <div>
-                            {{ $logs->appends(request()->query())->links('vendor.pagination.bootstrap-4') }}
+                            @if($logs->hasPages())
+                                {{ $logs->appends(request()->query())->links('vendor.pagination.bootstrap-4') }}
+                            @endif
                         </div>
                     </div>
                 </div>
