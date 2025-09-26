@@ -222,7 +222,7 @@
                                 <div class="generator-control-card">
                                     <div class="generator-card-header">
                                         <div class="generator-title-section">
-                                            <h6 class="generator-name" id="live-name-{{ $generator->generator_id }}">{{ $generator->name }}</h6>
+                                            <h6 class="generator-name" id="live-name-{{ $generator->generator_id }}">{{ $generator->name ?: 'Generator ' . $generator->generator_id }}</h6>
                                             <small class="generator-id" id="live-id-{{ $generator->generator_id }}">{{ $generator->generator_id }}</small>
                                         </div>
                                         <div class="power-status-indicator" id="status-{{ $generator->generator_id }}">
