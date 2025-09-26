@@ -223,7 +223,7 @@
                                     <div class="generator-card-header">
                                         <div class="generator-title-section">
                                             <h6 class="generator-name">{{ $generator->name }}</h6>
-                                            <small class="generator-id">{{ $generator->generator_id }}</small>
+                                            <small class="generator-id" id="live-id-{{ $generator->generator_id }}">{{ $generator->generator_id }}</small>
                                         </div>
                                         <div class="power-status-indicator" id="status-{{ $generator->generator_id }}">
                                             <i class="fas fa-circle"></i>
@@ -889,6 +889,33 @@ input:checked + .slider:before {
         performanceChart.update();
     }
 
+    function updateLiveGeneratorIds(logsData) {
+        // Group logs by generator_id to get the latest entry for each generator
+        const latestLogs = {};
+        logsData.forEach(function(log) {
+            if (!latestLogs[log.generator_id] || new Date(log.log_timestamp) > new Date(latestLogs[log.generator_id].log_timestamp)) {
+                latestLogs[log.generator_id] = log;
+            }
+        });
+
+        // Update each generator card with live ID
+        Object.keys(latestLogs).forEach(function(generatorId) {
+            const liveIdElement = document.getElementById('live-id-' + generatorId);
+            if (liveIdElement) {
+                const log = latestLogs[generatorId];
+                // Update with live data - you can customize this based on what data you want to show
+                liveIdElement.textContent = log.generator_id;
+
+                // Add a subtle animation to indicate update
+                liveIdElement.style.transition = 'all 0.3s ease';
+                liveIdElement.style.color = '#48bb78';
+                setTimeout(function() {
+                    liveIdElement.style.color = '#a0aec0';
+                }, 1000);
+            }
+        });
+    }
+
         function refreshData() {
             // Show loading state
             const refreshBtn = $('#refreshBtn');
@@ -954,6 +981,9 @@ input:checked + .slider:before {
                         `;
                         tbody.append(row);
                     });
+
+                    // Update live generator IDs
+                    updateLiveGeneratorIds(response.data);
 
                     // Update chart with latest data
                     if (response.data.length > 0) {
