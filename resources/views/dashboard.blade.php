@@ -229,11 +229,6 @@
                                     <div>
                                         <h6 class="mb-0 text-white">{{ $generator->name ?: 'Generator ' . $generator->generator_id }}</h6>
                                         <small class="text-white-50">{{ $generator->generator_id }}</small>
-                                        @if($generator->sitename)
-                                            <div class="mt-1">
-                                                <span class="badge badge-warning-modern badge-modern">{{ $generator->sitename }}</span>
-                                            </div>
-                                        @endif
                                         @if($generator->kva_power)
                                             <div class="mt-1">
                                                 <span class="badge badge-info-modern badge-modern">{{ $generator->kva_power }}</span>
