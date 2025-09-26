@@ -90,7 +90,9 @@ class DashboardController extends Controller
             }
         }
 
-        $logs = $query->orderBy('log_timestamp', 'desc')->paginate(50); // Paginate logs with 50 per page
+        $perPage = $request->get('per_page', 50); // Default to 50, allow 20, 50, 100
+        $perPage = in_array($perPage, [20, 50, 100]) ? $perPage : 50;
+        $logs = $query->orderBy('log_timestamp', 'desc')->paginate($perPage);
 
         // Get filter options
         $clients = Client::all();
@@ -130,7 +132,9 @@ class DashboardController extends Controller
             }
         }
 
-        $writeLogs = $query->orderBy('write_timestamp', 'desc')->paginate(50); // Paginate write logs with 50 per page
+        $perPage = $request->get('per_page', 50); // Default to 50, allow 20, 50, 100
+        $perPage = in_array($perPage, [20, 50, 100]) ? $perPage : 50;
+        $writeLogs = $query->orderBy('write_timestamp', 'desc')->paginate($perPage);
 
         // Get filter options
         $clients = Client::all();

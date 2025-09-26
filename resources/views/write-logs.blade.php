@@ -198,8 +198,18 @@
 
                     <!-- Pagination and Write Log Count -->
                     <div class="d-flex justify-content-between align-items-center mt-3">
-                        <div class="text-white-50">
-                            Showing {{ $writeLogs->firstItem() ?? 0 }} to {{ $writeLogs->lastItem() ?? 0 }} of {{ $writeLogs->total() }} write logs
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="text-white-50">
+                                Showing {{ $writeLogs->firstItem() ?? 0 }} to {{ $writeLogs->lastItem() ?? 0 }} of {{ $writeLogs->total() }} write logs
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <label class="text-white-50 mb-0">Show:</label>
+                                <select class="form-select form-control-modern" id="perPageSelect" style="width: auto; font-size: 0.8rem;" onchange="changePerPage(this.value)">
+                                    <option value="20" {{ request('per_page') == 20 ? 'selected' : '' }}>20</option>
+                                    <option value="50" {{ request('per_page') == 50 || !request('per_page') ? 'selected' : '' }}>50</option>
+                                    <option value="100" {{ request('per_page') == 100 ? 'selected' : '' }}>100</option>
+                                </select>
+                            </div>
                         </div>
                         <div>
                             @if($writeLogs->hasPages())
@@ -228,6 +238,13 @@
         url.searchParams.set('date', date);
         url.searchParams.set('status', status);
 
+        window.location.href = url.toString();
+    }
+
+    function changePerPage(perPage) {
+        let url = new URL(window.location);
+        url.searchParams.set('per_page', perPage);
+        url.searchParams.delete('page'); // Reset to first page
         window.location.href = url.toString();
     }
 
