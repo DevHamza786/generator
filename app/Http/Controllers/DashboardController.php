@@ -18,7 +18,7 @@ class DashboardController extends Controller
     {
         // Get clients and generators for filtering
         $clients = Client::with('generators')->get();
-        $generators = Generator::with('client')->get();
+        $generators = Generator::with('client')->select('generator_id', 'name', 'sitename', 'client_id')->get();
 
         // Get latest logs with client and generator info
         $latestLogs = GeneratorLog::with(['client', 'generator'])
@@ -79,9 +79,7 @@ class DashboardController extends Controller
         }
 
         if ($request->filled('sitename')) {
-            $query->whereHas('generator', function($q) use ($request) {
-                $q->where('sitename', $request->sitename);
-            });
+            $query->where('sitename', $request->sitename);
         }
 
         if ($request->filled('date')) {
@@ -102,7 +100,7 @@ class DashboardController extends Controller
 
         // Get filter options
         $clients = Client::all();
-        $generators = Generator::select('generator_id', 'name')->get();
+        $generators = Generator::select('generator_id', 'name', 'sitename')->get();
         $generatorIds = $generators->pluck('generator_id')->sort();
 
         return view('logs', compact('logs', 'clients', 'generatorIds', 'generators'));
@@ -127,9 +125,7 @@ class DashboardController extends Controller
         }
 
         if ($request->filled('sitename')) {
-            $query->whereHas('generator', function($q) use ($request) {
-                $q->where('sitename', $request->sitename);
-            });
+            $query->where('sitename', $request->sitename);
         }
 
         if ($request->filled('date')) {
@@ -150,7 +146,7 @@ class DashboardController extends Controller
 
         // Get filter options
         $clients = Client::all();
-        $generators = Generator::select('generator_id', 'name')->get();
+        $generators = Generator::select('generator_id', 'name', 'sitename')->get();
         $writeLogGeneratorIds = $generators->pluck('generator_id')->sort();
 
         return view('write-logs', compact('writeLogs', 'clients', 'writeLogGeneratorIds', 'generators'));

@@ -10,6 +10,7 @@ class GeneratorWriteLog extends Model
     protected $fillable = [
         'client_id',
         'generator_id',
+        'sitename',
         'generator_id_old', // Keep old field for backward compatibility
         'client', // Keep old field for backward compatibility
         'PS',

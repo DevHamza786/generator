@@ -349,7 +349,7 @@
                             </select>
                             <select class="form-select form-control-modern" id="logSitenameFilter" style="width: auto;">
                                 <option value="">All Sites</option>
-                                @foreach($generators->where('sitename', '!=', null)->unique('sitename') as $generator)
+                                @foreach($generators->filter(function($g) { return !empty($g->sitename); })->unique('sitename') as $generator)
                                     <option value="{{ $generator->sitename }}">{{ $generator->sitename }}</option>
                                 @endforeach
                             </select>
@@ -379,7 +379,7 @@
                                         <span class="badge badge-info-modern badge-modern">{{ $log->generator_id }}</span>
                                     </td>
                                     <td>
-                                        <span class="badge badge-warning-modern badge-modern">{{ $log->generator->sitename ?? 'N/A' }}</span>
+                                        <span class="badge badge-warning-modern badge-modern">{{ $log->sitename ?? $log->generator->sitename ?? 'N/A' }}</span>
                                     </td>
                                     <td class="text-white">{{ $log->FL }}%</td>
                                     <td class="text-white">{{ $log->BV }}V</td>
@@ -418,7 +418,7 @@
                             </select>
                             <select class="form-select form-control-modern" id="writeLogSitenameFilter" style="width: auto;">
                                 <option value="">All Sites</option>
-                                @foreach($generators->where('sitename', '!=', null)->unique('sitename') as $generator)
+                                @foreach($generators->filter(function($g) { return !empty($g->sitename); })->unique('sitename') as $generator)
                                     <option value="{{ $generator->sitename }}">{{ $generator->sitename }}</option>
                                 @endforeach
                             </select>
@@ -448,7 +448,7 @@
                                         <span class="badge badge-info-modern badge-modern">{{ $writeLog->generator_id }}</span>
                                     </td>
                                     <td>
-                                        <span class="badge badge-warning-modern badge-modern">{{ $writeLog->generator->sitename ?? 'N/A' }}</span>
+                                        <span class="badge badge-warning-modern badge-modern">{{ $writeLog->sitename ?? $writeLog->generator->sitename ?? 'N/A' }}</span>
                                     </td>
                                     <td class="text-white">{{ $writeLog->FL }}%</td>
                                     <td class="text-white">{{ $writeLog->BV }}V</td>
