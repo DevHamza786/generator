@@ -221,45 +221,39 @@
                     </div>
                 </div>
                 <div class="card-body">
-                    <div class="generator-controls-container">
-                        <div class="generator-cards-wrapper" id="generatorPowerControls">
-                            @foreach($generators as $generator)
-                            <div class="generator-item" data-client-id="{{ $generator->client_id }}">
-                                <div class="generator-control-card">
-                                    <div class="generator-card-header">
-                                        <div class="generator-title-section">
-                                            <h6 class="generator-name" id="live-name-{{ $generator->generator_id }}">{{ $generator->name ?: 'Generator ' . $generator->generator_id }}</h6>
-                                            <small class="generator-id" id="live-id-{{ $generator->generator_id }}">{{ $generator->generator_id }}</small>
-                                        </div>
-                                        <div class="power-status-indicator" id="status-{{ $generator->generator_id }}">
-                                            <i class="fas fa-circle"></i>
-                                        </div>
+                    <div class="row" id="generatorPowerControls">
+                        @foreach($generators as $generator)
+                        <div class="col-lg-4 col-md-6 mb-3 generator-item" data-client-id="{{ $generator->client_id }}">
+                            <div class="generator-control-card p-3 rounded" style="background: var(--glass-bg); border: 1px solid rgba(255,255,255,0.1); transition: all 0.3s ease;">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <div>
+                                        <h6 class="mb-0 text-white">{{ $generator->name ?: 'Generator ' . $generator->generator_id }}</h6>
+                                        <small class="text-white-50">{{ $generator->generator_id }}</small>
+                                        @if($generator->kva_power)
+                                            <div class="mt-1">
+                                                <span class="badge badge-info-modern badge-modern">{{ $generator->kva_power }}</span>
+                                            </div>
+                                        @endif
                                     </div>
-
-                                    @if($generator->kva_power)
-                                    <div class="generator-badge-section">
-                                        <span class="generator-badge">{{ $generator->kva_power }}</span>
+                                    <div class="power-status-indicator" id="status-{{ $generator->generator_id }}">
+                                        <i class="fas fa-circle text-secondary"></i>
                                     </div>
-                                    @endif
-
-                                    <div class="generator-card-footer">
-                                        <div class="client-info">
-                                            <small class="client-name">{{ $generator->client->display_name ?? 'Unknown Client' }}</small>
-                                        </div>
-                                        <div class="power-toggle-switch">
-                                            <label class="switch">
-                                                <input type="checkbox"
-                                                       class="power-toggle"
-                                                       data-generator-id="{{ $generator->generator_id }}"
-                                                       id="toggle-{{ $generator->generator_id }}">
-                                                <span class="slider round"></span>
-                                            </label>
-                                        </div>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <small class="text-white-50">{{ $generator->client->display_name ?? 'Unknown Client' }}</small>
+                                    <div class="power-toggle-switch">
+                                        <label class="switch">
+                                            <input type="checkbox"
+                                                   class="power-toggle"
+                                                   data-generator-id="{{ $generator->generator_id }}"
+                                                   id="toggle-{{ $generator->generator_id }}">
+                                            <span class="slider round"></span>
+                                        </label>
                                     </div>
                                 </div>
                             </div>
-                            @endforeach
                         </div>
+                        @endforeach
                     </div>
                 </div>
             </div>
@@ -353,6 +347,12 @@
                                     <option value="{{ $generator->generator_id }}">{{ $generator->name }}</option>
                                 @endforeach
                             </select>
+                            <select class="form-select form-control-modern" id="logSitenameFilter" style="width: auto;">
+                                <option value="">All Sites</option>
+                                @foreach($generators->where('sitename', '!=', null)->unique('sitename') as $generator)
+                                    <option value="{{ $generator->sitename }}">{{ $generator->sitename }}</option>
+                                @endforeach
+                            </select>
                             <a href="{{ route('logs') }}" class="btn btn-sm btn-modern">View All</a>
                         </div>
                     </div>
@@ -364,6 +364,7 @@
                                     <tr>
                                     <th class="text-white">Time</th>
                                     <th class="text-white">ID</th>
+                                    <th class="text-white">Site</th>
                                     <th class="text-white">FL</th>
                                     <th class="text-white">BV</th>
                                     <th class="text-white">LV1</th>
@@ -376,6 +377,9 @@
                                     <td class="text-white-50">{{ $log->log_timestamp->format('H:i:s') }}</td>
                                     <td>
                                         <span class="badge badge-info-modern badge-modern">{{ $log->generator_id }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-warning-modern badge-modern">{{ $log->generator->sitename ?? 'N/A' }}</span>
                                     </td>
                                     <td class="text-white">{{ $log->FL }}%</td>
                                     <td class="text-white">{{ $log->BV }}V</td>
@@ -412,6 +416,12 @@
                                     <option value="{{ $generator->generator_id }}">{{ $generator->name }}</option>
                                 @endforeach
                             </select>
+                            <select class="form-select form-control-modern" id="writeLogSitenameFilter" style="width: auto;">
+                                <option value="">All Sites</option>
+                                @foreach($generators->where('sitename', '!=', null)->unique('sitename') as $generator)
+                                    <option value="{{ $generator->sitename }}">{{ $generator->sitename }}</option>
+                                @endforeach
+                            </select>
                             <a href="{{ route('write-logs') }}" class="btn btn-sm btn-modern">View All</a>
                         </div>
                     </div>
@@ -423,6 +433,7 @@
                                     <tr>
                                     <th class="text-white">Time</th>
                                     <th class="text-white">ID</th>
+                                    <th class="text-white">Site</th>
                                     <th class="text-white">FL</th>
                                     <th class="text-white">BV</th>
                                     <th class="text-white">LV1</th>
@@ -435,6 +446,9 @@
                                     <td class="text-white-50">{{ $writeLog->write_timestamp->format('H:i:s') }}</td>
                                     <td>
                                         <span class="badge badge-info-modern badge-modern">{{ $writeLog->generator_id }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-warning-modern badge-modern">{{ $writeLog->generator->sitename ?? 'N/A' }}</span>
                                     </td>
                                     <td class="text-white">{{ $writeLog->FL }}%</td>
                                     <td class="text-white">{{ $writeLog->BV }}V</td>
@@ -525,41 +539,7 @@ input:checked + .slider:before {
     box-shadow: 0 4px 15px rgba(0,0,0,0.2);
 }
 
-.generator-controls-container {
-    overflow-x: auto;
-    padding-bottom: 10px;
-    position: relative;
-}
-
-.generator-cards-wrapper {
-    display: flex;
-    gap: 20px;
-    padding: 10px 0;
-    min-width: max-content;
-}
-
-.generator-controls-container::-webkit-scrollbar {
-    height: 8px;
-}
-
-.generator-controls-container::-webkit-scrollbar-track {
-    background: rgba(255,255,255,0.1);
-    border-radius: 4px;
-}
-
-.generator-controls-container::-webkit-scrollbar-thumb {
-    background: rgba(255,255,255,0.3);
-    border-radius: 4px;
-}
-
-.generator-controls-container::-webkit-scrollbar-thumb:hover {
-    background: rgba(255,255,255,0.5);
-}
-
 .generator-item {
-    min-width: 300px;
-    max-width: 300px;
-    flex-shrink: 0;
     animation: slideInUp 0.5s ease-out;
 }
 
@@ -577,16 +557,6 @@ input:checked + .slider:before {
 .generator-control-card {
     position: relative;
     overflow: hidden;
-    background: linear-gradient(135deg, rgba(45, 55, 72, 0.9), rgba(26, 32, 44, 0.9));
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
-    padding: 20px;
-    transition: all 0.3s ease;
-    backdrop-filter: blur(10px);
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    min-height: 180px;
-    display: flex;
-    flex-direction: column;
 }
 
 .generator-control-card::before {
@@ -600,113 +570,8 @@ input:checked + .slider:before {
     transition: left 0.5s;
 }
 
-.generator-control-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
-    border-color: rgba(255, 255, 255, 0.2);
-}
-
 .generator-control-card:hover::before {
     left: 100%;
-}
-
-.generator-card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 15px;
-}
-
-.generator-title-section {
-    flex: 1;
-}
-
-.generator-name {
-    color: #ffffff;
-    font-weight: 700;
-    font-size: 1.1rem;
-    margin-bottom: 4px;
-    line-height: 1.2;
-    text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
-    background: linear-gradient(135deg, #ffffff, #e2e8f0);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    position: relative;
-}
-
-.generator-name::after {
-    content: '';
-    position: absolute;
-    bottom: -2px;
-    left: 0;
-    width: 100%;
-    height: 2px;
-    background: linear-gradient(90deg, #4299e1, #3182ce);
-    border-radius: 1px;
-    opacity: 0.7;
-}
-
-.generator-id {
-    color: #a0aec0;
-    font-size: 0.85rem;
-    font-weight: 400;
-}
-
-.power-status-indicator {
-    margin-left: 10px;
-}
-
-.power-status-indicator i {
-    font-size: 12px;
-    color: #718096;
-    transition: color 0.3s ease;
-}
-
-.power-status-indicator.online i {
-    color: #48bb78;
-}
-
-.power-status-indicator.offline i {
-    color: #f56565;
-}
-
-.generator-badge-section {
-    margin-bottom: 15px;
-}
-
-.generator-badge {
-    display: inline-block;
-    background: linear-gradient(135deg, #4299e1, #3182ce);
-    color: white;
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    box-shadow: 0 2px 4px rgba(66, 153, 225, 0.3);
-}
-
-.generator-card-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: auto;
-}
-
-.client-info {
-    flex: 1;
-}
-
-.client-name {
-    color: #a0aec0;
-    font-size: 0.85rem;
-    font-weight: 400;
-}
-
-.power-toggle-switch {
-    margin-left: 15px;
 }
 
 /* Main Generator Filter Styling */
@@ -1260,10 +1125,22 @@ input:checked + .slider:before {
             filterLogsTable('logsTable', selectedGeneratorId);
         });
 
+        // Sitename filter for logs
+        $('#logSitenameFilter').on('change', function() {
+            const selectedSitename = $(this).val();
+            filterLogsTableBySitename('logsTable', selectedSitename);
+        });
+
         // Generator filter for write logs
         $('#writeLogGeneratorFilter').on('change', function() {
             const selectedGeneratorId = $(this).val();
             filterLogsTable('writeLogsTable', selectedGeneratorId);
+        });
+
+        // Sitename filter for write logs
+        $('#writeLogSitenameFilter').on('change', function() {
+            const selectedSitename = $(this).val();
+            filterLogsTableBySitename('writeLogsTable', selectedSitename);
         });
 
         // Main generator filter (replaces static Generator ID)
@@ -1309,6 +1186,22 @@ input:checked + .slider:before {
             const generatorCell = row.cells[1]; // Generator ID is in the second column
 
             if (generatorId === '' || generatorCell.textContent.includes(generatorId)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        }
+    }
+
+    function filterLogsTableBySitename(tableId, sitename) {
+        const table = document.getElementById(tableId);
+        const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            const sitenameCell = row.cells[2]; // Site Name is in the third column
+
+            if (sitename === '' || sitenameCell.textContent.includes(sitename)) {
                 row.style.display = '';
             } else {
                 row.style.display = 'none';

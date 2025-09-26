@@ -69,6 +69,15 @@
                             </select>
                         </div>
                         <div class="col-md-3">
+                            <label class="form-label text-white-50">Site Name</label>
+                            <select class="form-select form-control-modern" id="sitenameFilter">
+                                <option value="">All Sites</option>
+                                @foreach($generators->where('sitename', '!=', null)->unique('sitename') as $generator)
+                                    <option value="{{ $generator->sitename }}">{{ $generator->sitename }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-3">
                             <label class="form-label text-white-50">Date Range</label>
                             <input type="date" class="form-control form-control-modern" id="dateFilter" value="{{ date('Y-m-d') }}">
                         </div>
@@ -126,6 +135,7 @@
                                     <th>Write Timestamp</th>
                                     <th>Client</th>
                                     <th>Generator ID</th>
+                                    <th>Site Name</th>
                                     <th>Power Status</th>
                                     <th>Fuel Level</th>
                                     <th>Battery Voltage</th>
@@ -159,6 +169,9 @@
                                             <span class="badge badge-info-modern badge-modern">{{ $writeLog->generator->generator_id ?? $writeLog->generator_id_old ?? $writeLog->generator_id }}</span>
                                         </td>
                                         <td>
+                                            <span class="badge badge-warning-modern badge-modern">{{ $writeLog->generator->sitename ?? 'N/A' }}</span>
+                                        </td>
+                                        <td>
                                             @if($writeLog->PS)
                                                 <span class="badge badge-success-modern badge-modern">Active</span>
                                             @else
@@ -186,7 +199,7 @@
                                     @endforeach
                                 @else
                                     <tr>
-                                        <td colspan="21" class="text-center text-white-50 py-4">
+                                        <td colspan="22" class="text-center text-white-50 py-4">
                                             <i class="fas fa-info-circle me-2"></i>
                                             No write logs found. Data will appear here when generator write logs are received.
                                         </td>
@@ -229,12 +242,14 @@
     function applyFilters() {
         const clientId = document.getElementById('clientFilter').value;
         const generatorId = document.getElementById('generatorFilter').value;
+        const sitename = document.getElementById('sitenameFilter').value;
         const date = document.getElementById('dateFilter').value;
         const status = document.getElementById('statusFilter').value;
 
         let url = new URL(window.location);
         url.searchParams.set('client_id', clientId);
         url.searchParams.set('generator_id', generatorId);
+        url.searchParams.set('sitename', sitename);
         url.searchParams.set('date', date);
         url.searchParams.set('status', status);
 
@@ -251,6 +266,7 @@
     function clearFilters() {
         document.getElementById('clientFilter').value = '';
         document.getElementById('generatorFilter').value = '';
+        document.getElementById('sitenameFilter').value = '';
         document.getElementById('dateFilter').value = '';
         document.getElementById('statusFilter').value = '';
         applyFilters();

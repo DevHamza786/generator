@@ -78,6 +78,12 @@ class DashboardController extends Controller
             });
         }
 
+        if ($request->filled('sitename')) {
+            $query->whereHas('generator', function($q) use ($request) {
+                $q->where('sitename', $request->sitename);
+            });
+        }
+
         if ($request->filled('date')) {
             $query->whereDate('log_timestamp', $request->date);
         }
@@ -117,6 +123,12 @@ class DashboardController extends Controller
         if ($request->filled('generator_id')) {
             $query->whereHas('generator', function($q) use ($request) {
                 $q->where('generator_id', $request->generator_id);
+            });
+        }
+
+        if ($request->filled('sitename')) {
+            $query->whereHas('generator', function($q) use ($request) {
+                $q->where('sitename', $request->sitename);
             });
         }
 
