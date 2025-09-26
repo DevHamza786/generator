@@ -21,7 +21,7 @@ class UpdateGeneratorSitenamesSeeder extends Seeder
             'ID4a2f3a40' => 'Yacht 500 KVA',
             'ID53da9f6e' => '4000 Yard 200 KVA',
             'ID44406481' => '4000 Yard 200 KVA',
-            'ID50da533a' => 'Crest Tower 350 KVA',
+            'ID50da533a' => 'Crest Tower 250 KVA', // Fixed: This should be 250 KVA, not 350 KVA
             'ID350kva' => 'Crest Tower 350 KVA',
             // Additional mappings for any other IDs that might exist
             'ID492ff2e5' => 'Resort 200 KVA',
