@@ -12,6 +12,7 @@ class Generator extends Model
         'client_id',
         'generator_id',
         'name',
+        'kva_power',
         'description',
         'location',
         'is_active'

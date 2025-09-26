@@ -90,13 +90,14 @@ class DashboardController extends Controller
             }
         }
 
-        $logs = $query->orderBy('log_timestamp', 'desc')->get(); // Get all logs without pagination, ordered by latest first
+        $logs = $query->orderBy('log_timestamp', 'desc')->paginate(50); // Paginate logs with 50 per page
 
         // Get filter options
         $clients = Client::all();
-        $generatorIds = Generator::distinct()->pluck('generator_id')->sort();
+        $generators = Generator::select('generator_id', 'name')->get();
+        $generatorIds = $generators->pluck('generator_id')->sort();
 
-        return view('logs', compact('logs', 'clients', 'generatorIds'));
+        return view('logs', compact('logs', 'clients', 'generatorIds', 'generators'));
     }
 
     /**
@@ -129,13 +130,14 @@ class DashboardController extends Controller
             }
         }
 
-        $writeLogs = $query->orderBy('write_timestamp', 'desc')->get(); // Get all write logs without pagination, ordered by latest first
+        $writeLogs = $query->orderBy('write_timestamp', 'desc')->paginate(50); // Paginate write logs with 50 per page
 
         // Get filter options
         $clients = Client::all();
-        $writeLogGeneratorIds = Generator::distinct()->pluck('generator_id')->sort();
+        $generators = Generator::select('generator_id', 'name')->get();
+        $writeLogGeneratorIds = $generators->pluck('generator_id')->sort();
 
-        return view('write-logs', compact('writeLogs', 'clients', 'writeLogGeneratorIds'));
+        return view('write-logs', compact('writeLogs', 'clients', 'writeLogGeneratorIds', 'generators'));
     }
 
     /**

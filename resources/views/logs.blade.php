@@ -30,7 +30,7 @@
             <div class="col-md-4 text-end">
                     <div class="d-flex justify-content-end gap-3 align-items-center">
                         <div class="text-center">
-                            <div class="h5 mb-0 text-white fw-bold" id="logCount">{{ $logs->count() }}</div>
+                            <div class="h5 mb-0 text-white fw-bold" id="logCount">{{ $logs->total() }}</div>
                             <small class="text-white-50">Total Logs</small>
                         </div>
                     </div>
@@ -60,11 +60,11 @@
                             </select>
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label text-white-50">Generator ID</label>
+                            <label class="form-label text-white-50">Generator</label>
                             <select class="form-select form-control-modern" id="generatorFilter">
                                 <option value="">All Generators</option>
-                                @foreach($generatorIds as $id)
-                                    <option value="{{ $id }}">{{ $id }}</option>
+                                @foreach($generators as $generator)
+                                    <option value="{{ $generator->generator_id }}">{{ $generator->name }} ({{ $generator->generator_id }})</option>
                                 @endforeach
                             </select>
                         </div>
@@ -109,7 +109,7 @@
                     <h5 class="mb-0 text-white">
                         <i class="fas fa-table me-2"></i>
                         Generator Logs
-                        <span class="badge badge-primary-modern badge-modern ms-2" id="logCount">{{ $logs->count() }}</span>
+                        <span class="badge badge-primary-modern badge-modern ms-2" id="logCount">{{ $logs->total() }}</span>
                     </h5>
                     <div class="d-flex gap-2">
                         <button class="btn btn-outline-primary btn-modern btn-sm" onclick="exportLogs()">
@@ -204,10 +204,13 @@
                         </table>
                     </div>
 
-                    <!-- Log Count -->
+                    <!-- Pagination and Log Count -->
                     <div class="d-flex justify-content-between align-items-center mt-3">
                         <div class="text-white-50">
-                            Showing {{ $logs->count() }} logs
+                            Showing {{ $logs->firstItem() ?? 0 }} to {{ $logs->lastItem() ?? 0 }} of {{ $logs->total() }} logs
+                        </div>
+                        <div>
+                            {{ $logs->appends(request()->query())->links('vendor.pagination.bootstrap-4') }}
                         </div>
                     </div>
                 </div>

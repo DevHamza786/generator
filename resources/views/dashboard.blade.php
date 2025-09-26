@@ -45,10 +45,10 @@
     </div>
 
     <!-- Key Metrics Row -->
-        <div class="row mb-4">
+    <div class="row mb-4">
         <div class="col-lg-3 col-md-6 mb-4">
-            <div class="card card-modern animate-fadeInUp" style="animation-delay: 0.1s;">
-                <div class="card-body text-center">
+            <div class="card card-modern animate-fadeInUp h-100" style="animation-delay: 0.1s;">
+                <div class="card-body text-center d-flex flex-column">
                     <div class="d-flex align-items-center justify-content-between mb-3">
                         <div class="p-3 rounded-circle" style="background: var(--success-gradient);">
                             <i class="fas fa-power-off fa-2x text-white"></i>
@@ -59,7 +59,7 @@
                         </div>
                     </div>
                     <h6 class="text-white mb-0">Client Management</h6>
-                    <div class="mt-2">
+                    <div class="mt-auto">
                         <span class="badge badge-success-modern badge-modern">ACTIVE CLIENTS</span>
                     </div>
                 </div>
@@ -67,8 +67,8 @@
         </div>
 
         <div class="col-lg-3 col-md-6 mb-4">
-            <div class="card card-modern animate-fadeInUp" style="animation-delay: 0.2s;">
-                <div class="card-body text-center">
+            <div class="card card-modern animate-fadeInUp h-100" style="animation-delay: 0.2s;">
+                <div class="card-body text-center d-flex flex-column">
                     <div class="d-flex align-items-center justify-content-between mb-3">
                         <div class="p-3 rounded-circle" style="background: var(--info-gradient);">
                             <i class="fas fa-battery-half fa-2x text-white"></i>
@@ -79,7 +79,7 @@
                         </div>
                     </div>
                     <h6 class="text-white mb-0">Generator Fleet</h6>
-                    <div class="mt-2">
+                    <div class="mt-auto">
                         <div class="progress" style="height: 6px;">
                             <div class="progress-bar" style="width: {{ $totalGenerators > 0 ? ($runningGenerators / $totalGenerators) * 100 : 0 }}%; background: var(--info-gradient);"></div>
                         </div>
@@ -89,8 +89,8 @@
         </div>
 
         <div class="col-lg-3 col-md-6 mb-4">
-            <div class="card card-modern animate-fadeInUp" style="animation-delay: 0.3s;">
-                    <div class="card-body text-center">
+            <div class="card card-modern animate-fadeInUp h-100" style="animation-delay: 0.3s;">
+                <div class="card-body text-center d-flex flex-column">
                     <div class="d-flex align-items-center justify-content-between mb-3">
                         <div class="p-3 rounded-circle" style="background: var(--secondary-gradient);">
                             <i class="fas fa-bolt fa-2x text-white"></i>
@@ -101,7 +101,7 @@
                         </div>
                     </div>
                     <h6 class="text-white mb-0">Active Generators</h6>
-                    <div class="mt-2">
+                    <div class="mt-auto">
                         <span class="badge badge-success-modern badge-modern">OPERATIONAL</span>
                     </div>
                 </div>
@@ -109,8 +109,8 @@
         </div>
 
         <div class="col-lg-3 col-md-6 mb-4">
-            <div class="card card-modern animate-fadeInUp" style="animation-delay: 0.4s;">
-                <div class="card-body text-center">
+            <div class="card card-modern animate-fadeInUp h-100" style="animation-delay: 0.4s;">
+                <div class="card-body text-center d-flex flex-column">
                     <div class="d-flex align-items-center justify-content-between mb-3">
                         <div class="p-3 rounded-circle" style="background: var(--primary-gradient);">
                             <i class="fas fa-chart-line fa-2x text-white"></i>
@@ -121,7 +121,7 @@
                         </div>
                     </div>
                     <h6 class="text-white mb-0">Data Points</h6>
-                    <div class="mt-2">
+                    <div class="mt-auto">
                         <small class="text-white-50">Last 24h</small>
                     </div>
                 </div>
@@ -137,16 +137,23 @@
                     <div class="row align-items-center">
                         <div class="col-md-8">
                             <div class="d-flex align-items-center mb-3">
-                                <div class="me-4">
+                                <div class="me-4 d-flex align-items-center">
                                     <i class="fas fa-power-off fa-3x text-white"></i>
                                 </div>
-                                <div>
-                                    <h2 class="mb-1 text-white fw-bold" id="statusText">
+                                <div class="d-flex flex-column justify-content-center">
+                                    <h2 class="mb-2 text-white fw-bold" id="statusText">
                                         {{ $generatorStatus && $generatorStatus->power ? 'OPERATIONAL' : 'OFFLINE' }}
                                     </h2>
-                                    <p class="text-white-50 mb-0">
-                                        Generator ID: <span class="fw-bold">{{ $generatorStatus ? $generatorStatus->generator_id : 'N/A' }}</span>
-                                    </p>
+                                    <div>
+                                        <select class="form-select form-control-modern" id="mainGeneratorFilter" style="width: auto; font-size: 0.9rem; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white;">
+                                            <option value="">Select Generator</option>
+                                            @foreach($generators as $generator)
+                                                <option value="{{ $generator->generator_id }}" {{ $generatorStatus && $generatorStatus->generator_id == $generator->generator_id ? 'selected' : '' }}>
+                                                    {{ $generator->name }} ({{ $generator->generator_id }})
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
                             <div class="row">
@@ -192,40 +199,61 @@
         <div class="col-12">
             <div class="card card-modern animate-fadeInUp" style="animation-delay: 0.5s;">
                 <div class="card-header border-0 bg-transparent">
-                    <h5 class="mb-0 text-white">
-                        <i class="fas fa-power-off me-2"></i>
-                        Generator Power Control
-                    </h5>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0 text-white">
+                            <i class="fas fa-power-off me-2"></i>
+                            Generator Power Control
+                        </h5>
+                        <div class="d-flex gap-2">
+                            <select class="form-select form-control-modern" id="clientFilter" style="width: auto;">
+                                <option value="">All Clients</option>
+                                @foreach($clients as $client)
+                                    <option value="{{ $client->id }}">{{ $client->display_name ?? $client->client_id }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
                 </div>
                 <div class="card-body">
-                    <div class="row" id="generatorPowerControls">
-                        @foreach($generators as $generator)
-                        <div class="col-lg-4 col-md-6 mb-3">
-                            <div class="generator-control-card p-3 rounded" style="background: var(--glass-bg); border: 1px solid rgba(255,255,255,0.1);">
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <div>
-                                        <h6 class="mb-0 text-white">{{ $generator->name }}</h6>
-                                        <small class="text-white-50">{{ $generator->generator_id }}</small>
+                    <div class="generator-controls-container">
+                        <div class="generator-cards-wrapper" id="generatorPowerControls">
+                            @foreach($generators as $generator)
+                            <div class="generator-item" data-client-id="{{ $generator->client_id }}">
+                                <div class="generator-control-card">
+                                    <div class="generator-card-header">
+                                        <div class="generator-title-section">
+                                            <h6 class="generator-name">{{ $generator->name }}</h6>
+                                            <small class="generator-id">{{ $generator->generator_id }}</small>
+                                        </div>
+                                        <div class="power-status-indicator" id="status-{{ $generator->generator_id }}">
+                                            <i class="fas fa-circle"></i>
+                                        </div>
                                     </div>
-                                    <div class="power-status-indicator" id="status-{{ $generator->generator_id }}">
-                                        <i class="fas fa-circle text-secondary"></i>
+
+                                    @if($generator->kva_power)
+                                    <div class="generator-badge-section">
+                                        <span class="generator-badge">{{ $generator->kva_power }}</span>
                                     </div>
-                                </div>
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <small class="text-white-50">{{ $generator->client->display_name ?? 'Unknown Client' }}</small>
-                                    <div class="power-toggle-switch">
-                                        <label class="switch">
-                                            <input type="checkbox"
-                                                   class="power-toggle"
-                                                   data-generator-id="{{ $generator->generator_id }}"
-                                                   id="toggle-{{ $generator->generator_id }}">
-                                            <span class="slider round"></span>
-                                        </label>
+                                    @endif
+
+                                    <div class="generator-card-footer">
+                                        <div class="client-info">
+                                            <small class="client-name">{{ $generator->client->display_name ?? 'Unknown Client' }}</small>
+                                        </div>
+                                        <div class="power-toggle-switch">
+                                            <label class="switch">
+                                                <input type="checkbox"
+                                                       class="power-toggle"
+                                                       data-generator-id="{{ $generator->generator_id }}"
+                                                       id="toggle-{{ $generator->generator_id }}">
+                                                <span class="slider round"></span>
+                                            </label>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
+                            @endforeach
                         </div>
-                        @endforeach
                     </div>
                 </div>
             </div>
@@ -312,7 +340,15 @@
                             <i class="fas fa-list me-2"></i>
                             Latest Log Data
                         </h5>
-                        <a href="{{ route('logs') }}" class="btn btn-sm btn-modern">View All</a>
+                        <div class="d-flex gap-2">
+                            <select class="form-select form-control-modern" id="logGeneratorFilter" style="width: auto;">
+                                <option value="">All Generators</option>
+                                @foreach($generators as $generator)
+                                    <option value="{{ $generator->generator_id }}">{{ $generator->name }}</option>
+                                @endforeach
+                            </select>
+                            <a href="{{ route('logs') }}" class="btn btn-sm btn-modern">View All</a>
+                        </div>
                     </div>
                 </div>
                 <div class="card-body p-0">
@@ -363,7 +399,15 @@
                             <i class="fas fa-database me-2"></i>
                             Write Log Data
                         </h5>
-                        <a href="{{ route('write-logs') }}" class="btn btn-sm btn-modern">View All</a>
+                        <div class="d-flex gap-2">
+                            <select class="form-select form-control-modern" id="writeLogGeneratorFilter" style="width: auto;">
+                                <option value="">All Generators</option>
+                                @foreach($generators as $generator)
+                                    <option value="{{ $generator->generator_id }}">{{ $generator->name }}</option>
+                                @endforeach
+                            </select>
+                            <a href="{{ route('write-logs') }}" class="btn btn-sm btn-modern">View All</a>
+                        </div>
                     </div>
                 </div>
                 <div class="card-body p-0">
@@ -471,6 +515,218 @@ input:checked + .slider:before {
 .generator-control-card:hover {
     background: rgba(255,255,255,0.15) !important;
     transition: all 0.3s ease;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+
+.generator-controls-container {
+    overflow-x: auto;
+    padding-bottom: 10px;
+    position: relative;
+}
+
+.generator-cards-wrapper {
+    display: flex;
+    gap: 20px;
+    padding: 10px 0;
+    min-width: max-content;
+}
+
+.generator-controls-container::-webkit-scrollbar {
+    height: 8px;
+}
+
+.generator-controls-container::-webkit-scrollbar-track {
+    background: rgba(255,255,255,0.1);
+    border-radius: 4px;
+}
+
+.generator-controls-container::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.3);
+    border-radius: 4px;
+}
+
+.generator-controls-container::-webkit-scrollbar-thumb:hover {
+    background: rgba(255,255,255,0.5);
+}
+
+.generator-item {
+    min-width: 300px;
+    max-width: 300px;
+    flex-shrink: 0;
+    animation: slideInUp 0.5s ease-out;
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.generator-control-card {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(135deg, rgba(45, 55, 72, 0.9), rgba(26, 32, 44, 0.9));
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 20px;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    min-height: 180px;
+    display: flex;
+    flex-direction: column;
+}
+
+.generator-control-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+    transition: left 0.5s;
+}
+
+.generator-control-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.generator-control-card:hover::before {
+    left: 100%;
+}
+
+.generator-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+}
+
+.generator-title-section {
+    flex: 1;
+}
+
+.generator-name {
+    color: #ffffff;
+    font-weight: 600;
+    font-size: 1.1rem;
+    margin-bottom: 4px;
+    line-height: 1.2;
+}
+
+.generator-id {
+    color: #a0aec0;
+    font-size: 0.85rem;
+    font-weight: 400;
+}
+
+.power-status-indicator {
+    margin-left: 10px;
+}
+
+.power-status-indicator i {
+    font-size: 12px;
+    color: #718096;
+    transition: color 0.3s ease;
+}
+
+.power-status-indicator.online i {
+    color: #48bb78;
+}
+
+.power-status-indicator.offline i {
+    color: #f56565;
+}
+
+.generator-badge-section {
+    margin-bottom: 15px;
+}
+
+.generator-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #4299e1, #3182ce);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 4px rgba(66, 153, 225, 0.3);
+}
+
+.generator-card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: auto;
+}
+
+.client-info {
+    flex: 1;
+}
+
+.client-name {
+    color: #a0aec0;
+    font-size: 0.85rem;
+    font-weight: 400;
+}
+
+.power-toggle-switch {
+    margin-left: 15px;
+}
+
+/* Main Generator Filter Styling */
+#mainGeneratorFilter {
+    background: rgba(255,255,255,0.1) !important;
+    border: 1px solid rgba(255,255,255,0.2) !important;
+    color: white !important;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+}
+
+#mainGeneratorFilter:focus {
+    background: rgba(255,255,255,0.15) !important;
+    border-color: rgba(255,255,255,0.4) !important;
+    box-shadow: 0 0 0 0.2rem rgba(255,255,255,0.1);
+    outline: none;
+}
+
+#mainGeneratorFilter option {
+    background: #2c3e50;
+    color: white;
+    padding: 8px;
+}
+
+#mainGeneratorFilter:hover {
+    background: rgba(255,255,255,0.15) !important;
+    border-color: rgba(255,255,255,0.3) !important;
+}
+
+/* Status Card Alignment Fixes */
+.status-card .d-flex.align-items-center {
+    align-items: center !important;
+}
+
+.status-card .d-flex.flex-column {
+    justify-content: center;
+    height: 100%;
+}
+
+.status-card .fa-power-off {
+    line-height: 1;
+    vertical-align: middle;
 }
 </style>
 @endsection
@@ -871,8 +1127,81 @@ input:checked + .slider:before {
             toggleGeneratorPower(generatorId, power);
         });
 
+        // Client filter functionality
+        $('#clientFilter').on('change', function() {
+            const selectedClientId = $(this).val();
+
+            $('.generator-item').each(function() {
+                const clientId = $(this).data('client-id');
+
+                if (selectedClientId === '' || clientId == selectedClientId) {
+                    $(this).show().addClass('animate-fadeInUp');
+                } else {
+                    $(this).hide();
+                }
+            });
+        });
+
+        // Generator filter for logs
+        $('#logGeneratorFilter').on('change', function() {
+            const selectedGeneratorId = $(this).val();
+            filterLogsTable('logsTable', selectedGeneratorId);
+        });
+
+        // Generator filter for write logs
+        $('#writeLogGeneratorFilter').on('change', function() {
+            const selectedGeneratorId = $(this).val();
+            filterLogsTable('writeLogsTable', selectedGeneratorId);
+        });
+
+        // Main generator filter (replaces static Generator ID)
+        $('#mainGeneratorFilter').on('change', function() {
+            const selectedGeneratorId = $(this).val();
+            if (selectedGeneratorId) {
+                // Find the selected generator data
+                const selectedGenerator = {!! json_encode($generators) !!}.find(g => g.generator_id === selectedGeneratorId);
+                if (selectedGenerator) {
+                    // Find latest log for this generator
+                    const latestLog = {!! json_encode($latestLogs) !!}.find(log => log.generator_id === selectedGeneratorId);
+                    if (latestLog) {
+                        $('#fuelLevel').text(latestLog.FL + '%');
+                        $('#batteryVoltage').text(latestLog.BV + 'V');
+                        $('#lineVoltage').text(latestLog.LV1 + 'V');
+
+                        // Update status based on GS field
+                        const statusCard = $('#statusCard');
+                        const statusText = $('#statusText');
+                        if (latestLog.GS) {
+                            statusCard.removeClass('status-offline').addClass('status-online');
+                            statusText.text('OPERATIONAL');
+                        } else {
+                            statusCard.removeClass('status-online').addClass('status-offline');
+                            statusText.text('OFFLINE');
+                        }
+                    }
+                }
+            }
+        });
+
+
         // Refresh power status every 30 seconds
         setInterval(loadPowerStatus, 30000);
     });
+
+    function filterLogsTable(tableId, generatorId) {
+        const table = document.getElementById(tableId);
+        const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            const generatorCell = row.cells[1]; // Generator ID is in the second column
+
+            if (generatorId === '' || generatorCell.textContent.includes(generatorId)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        }
+    }
     </script>
 @endsection
