@@ -205,6 +205,12 @@
                             Generator Power Control
                         </h5>
                         <div class="d-flex gap-2">
+                            <select class="form-select form-control-modern" id="generatorFilter" style="width: auto;">
+                                <option value="">All Generators</option>
+                                @foreach($generators as $generator)
+                                    <option value="{{ $generator->generator_id }}">{{ $generator->name ?: 'Generator ' . $generator->generator_id }}</option>
+                                @endforeach
+                            </select>
                             <select class="form-select form-control-modern" id="clientFilter" style="width: auto;">
                                 <option value="">All Clients</option>
                                 @foreach($clients as $client)
@@ -617,10 +623,28 @@ input:checked + .slider:before {
 
 .generator-name {
     color: #ffffff;
-    font-weight: 600;
+    font-weight: 700;
     font-size: 1.1rem;
     margin-bottom: 4px;
     line-height: 1.2;
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+    background: linear-gradient(135deg, #ffffff, #e2e8f0);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    position: relative;
+}
+
+.generator-name::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, #4299e1, #3182ce);
+    border-radius: 1px;
+    opacity: 0.7;
 }
 
 .generator-id {
@@ -1198,6 +1222,21 @@ input:checked + .slider:before {
             const power = $(this).is(':checked');
 
             toggleGeneratorPower(generatorId, power);
+        });
+
+        // Generator filter functionality
+        $('#generatorFilter').on('change', function() {
+            const selectedGeneratorId = $(this).val();
+
+            $('.generator-item').each(function() {
+                const generatorId = $(this).find('.generator-id').text();
+
+                if (selectedGeneratorId === '' || generatorId === selectedGeneratorId) {
+                    $(this).show().addClass('animate-fadeInUp');
+                } else {
+                    $(this).hide();
+                }
+            });
         });
 
         // Client filter functionality
