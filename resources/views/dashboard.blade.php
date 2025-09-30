@@ -113,16 +113,16 @@
                 <div class="card-body text-center d-flex flex-column">
                     <div class="d-flex align-items-center justify-content-between mb-3">
                         <div class="p-3 rounded-circle" style="background: var(--primary-gradient);">
-                            <i class="fas fa-chart-line fa-2x text-white"></i>
+                            <i class="fas fa-clock fa-2x text-white"></i>
                         </div>
                         <div class="text-end">
-                            <h3 class="mb-0 text-white fw-bold" id="totalLogs">{{ $totalLogs + $totalWriteLogs }}</h3>
-                            <small class="text-white-50">Total Logs</small>
+                            <h3 class="mb-0 text-white fw-bold" id="runningGeneratorsCount">{{ $runningGenerators }}</h3>
+                            <small class="text-white-50">Running Now</small>
                         </div>
                     </div>
-                    <h6 class="text-white mb-0">Data Points</h6>
+                    <h6 class="text-white mb-0">Runtime Tracking</h6>
                     <div class="mt-auto">
-                        <small class="text-white-50">Last 24h</small>
+                        <small class="text-white-50" id="totalRuntimeToday">Loading...</small>
                     </div>
                 </div>
             </div>
@@ -254,6 +254,36 @@
                             </div>
                         </div>
                         @endforeach
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Runtime Tracking Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card card-modern animate-fadeInUp" style="animation-delay: 0.5s;">
+                <div class="card-header border-0 bg-transparent">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0 text-white">
+                            <i class="fas fa-clock me-2"></i>
+                            Generator Runtime Tracking
+                        </h5>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-sm btn-outline-light" onclick="refreshRuntimeData()">
+                                <i class="fas fa-sync-alt me-1"></i>Refresh
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row" id="runtimeTrackingCards">
+                        <!-- Runtime cards will be loaded here -->
+                        <div class="col-12 text-center py-4">
+                            <i class="fas fa-spinner fa-spin fa-2x text-muted"></i>
+                            <p class="text-muted mt-2">Loading runtime data...</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1175,6 +1205,12 @@ input:checked + .slider:before {
 
         // Refresh power status every 30 seconds
         setInterval(loadPowerStatus, 30000);
+
+        // Load runtime data on page load
+        loadRuntimeData();
+
+        // Refresh runtime data every 30 seconds
+        setInterval(loadRuntimeData, 30000);
     });
 
     // Alert checking function
@@ -1193,6 +1229,101 @@ input:checked + .slider:before {
         }).fail(function() {
             console.error('Failed to check alerts');
         });
+    }
+
+    // Runtime tracking functions
+    function loadRuntimeData() {
+        $.get('/api/runtime/summary', function(response) {
+            if (response.success) {
+                updateRuntimeSummary(response.data);
+            }
+        }).fail(function() {
+            console.error('Failed to load runtime summary');
+        });
+
+        $.get('/api/runtime/running', function(response) {
+            if (response.success) {
+                updateRuntimeCards(response.data);
+            }
+        }).fail(function() {
+            console.error('Failed to load running generators');
+        });
+    }
+
+    function updateRuntimeSummary(data) {
+        $('#runningGeneratorsCount').text(data.currently_running);
+        $('#totalRuntimeToday').text('Today: ' + data.total_today_formatted);
+    }
+
+    function updateRuntimeCards(runningGenerators) {
+        const container = $('#runtimeTrackingCards');
+
+        if (runningGenerators.length === 0) {
+            container.html(`
+                <div class="col-12 text-center py-4">
+                    <i class="fas fa-power-off fa-2x text-muted"></i>
+                    <p class="text-muted mt-2">No generators currently running</p>
+                </div>
+            `);
+            return;
+        }
+
+        let html = '';
+        runningGenerators.forEach(function(runtime) {
+            const startTime = new Date(runtime.start_time);
+            const now = new Date();
+            const duration = Math.floor((now - startTime) / 1000);
+            const formattedDuration = formatDuration(duration);
+
+            html += `
+                <div class="col-lg-4 col-md-6 mb-3">
+                    <div class="runtime-card p-3 rounded" style="background: var(--glass-bg); border: 1px solid rgba(255,255,255,0.1);">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div>
+                                <h6 class="mb-0 text-white">${runtime.generator?.name || 'Generator ' + runtime.generator_id}</h6>
+                                <small class="text-white-50">${runtime.generator_id}</small>
+                                ${runtime.sitename ? `<div class="mt-1"><span class="badge badge-info-modern badge-modern">${runtime.sitename}</span></div>` : ''}
+                            </div>
+                            <div class="runtime-status">
+                                <i class="fas fa-circle text-success"></i>
+                            </div>
+                        </div>
+                        <div class="runtime-details">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <small class="text-white-50">Runtime:</small>
+                                <span class="text-white fw-bold">${formattedDuration}</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <small class="text-white-50">Started:</small>
+                                <small class="text-white-50">${startTime.toLocaleTimeString()}</small>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <small class="text-white-50">Voltages:</small>
+                                <small class="text-white">L1:${runtime.start_voltage_l1}V L2:${runtime.start_voltage_l2}V L3:${runtime.start_voltage_l3}V</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        container.html(html);
+    }
+
+    function formatDuration(seconds) {
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        const secs = seconds % 60;
+
+        if (hours > 0) {
+            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        } else {
+            return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+    }
+
+    function refreshRuntimeData() {
+        loadRuntimeData();
     }
 
     function filterLogsTable(tableId, generatorId) {

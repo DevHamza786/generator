@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('generator_id');
             $table->string('client_id')->nullable();
             $table->string('sitename')->nullable();
-            $table->enum('type', ['fuel_low', 'battery_voltage', 'line_current']);
+            $table->enum('type', ['fuel_low', 'battery_voltage', 'line_current', 'long_runtime', 'critical_runtime']);
             $table->string('title');
             $table->text('message');
             $table->json('data')->nullable(); // Store additional alert data

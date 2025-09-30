@@ -967,6 +967,12 @@
                             Data Logs
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('preventive-maintenance') ? 'active' : '' }}" href="{{ route('preventive-maintenance') }}">
+                            <i class="fas fa-tools me-2"></i>
+                            Preventive Maintenance
+                        </a>
+                    </li>
                 </ul>
 
                 <ul class="navbar-nav align-items-center">
@@ -1376,6 +1382,8 @@
                 case 'fuel_low': return 'fas fa-gas-pump';
                 case 'battery_voltage': return 'fas fa-battery-half';
                 case 'line_current': return 'fas fa-bolt';
+                case 'long_runtime': return 'fas fa-clock';
+                case 'critical_runtime': return 'fas fa-exclamation-triangle';
                 default: return 'fas fa-exclamation-triangle';
             }
         }

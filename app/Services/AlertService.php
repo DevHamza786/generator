@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Alert;
 use App\Models\GeneratorLog;
 use App\Models\GeneratorWriteLog;
+use App\Models\GeneratorRuntime;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
@@ -18,6 +19,7 @@ class AlertService
         $this->checkFuelLevelAlerts();
         $this->checkBatteryVoltageAlerts();
         $this->checkLineCurrentAlerts();
+        $this->checkRuntimeAlerts();
     }
 
     /**
@@ -242,5 +244,59 @@ class AlertService
             return true;
         }
         return false;
+    }
+
+    /**
+     * Check for runtime alerts (long running generators)
+     */
+    private function checkRuntimeAlerts()
+    {
+        // Get generators that have been running for more than 8 hours
+        $longRunningGenerators = GeneratorRuntime::running()
+            ->where('start_time', '<=', now()->subHours(8))
+            ->get();
+
+        foreach ($longRunningGenerators as $runtime) {
+            $hoursRunning = $runtime->start_time->diffInHours(now());
+
+            $this->createAlertIfNotExists(
+                $runtime->generator_id,
+                $runtime->client_id,
+                $runtime->sitename,
+                'long_runtime',
+                'Long Runtime Alert',
+                "Generator {$runtime->generator_id} has been running for {$hoursRunning} hours. Consider maintenance check.",
+                [
+                    'hours_running' => $hoursRunning,
+                    'start_time' => $runtime->start_time,
+                    'threshold_hours' => 8
+                ],
+                'medium'
+            );
+        }
+
+        // Get generators that have been running for more than 24 hours (critical)
+        $criticalRunningGenerators = GeneratorRuntime::running()
+            ->where('start_time', '<=', now()->subHours(24))
+            ->get();
+
+        foreach ($criticalRunningGenerators as $runtime) {
+            $hoursRunning = $runtime->start_time->diffInHours(now());
+
+            $this->createAlertIfNotExists(
+                $runtime->generator_id,
+                $runtime->client_id,
+                $runtime->sitename,
+                'critical_runtime',
+                'Critical Runtime Alert',
+                "Generator {$runtime->generator_id} has been running for {$hoursRunning} hours. Immediate maintenance required!",
+                [
+                    'hours_running' => $hoursRunning,
+                    'start_time' => $runtime->start_time,
+                    'threshold_hours' => 24
+                ],
+                'critical'
+            );
+        }
     }
 }

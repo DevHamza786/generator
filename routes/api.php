@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\GeneratorController;
 use App\Http\Controllers\Api\AlertController;
+use App\Http\Controllers\Api\RuntimeController;
 
 /*
 |--------------------------------------------------------------------------
@@ -41,4 +42,16 @@ Route::prefix('alerts')->group(function () {
     Route::post('/{id}/acknowledge', [AlertController::class, 'acknowledge'])->name('api.alerts.acknowledge');
     Route::post('/acknowledge-all', [AlertController::class, 'acknowledgeAll'])->name('api.alerts.acknowledge-all');
     Route::post('/{id}/resolve', [AlertController::class, 'resolve'])->name('api.alerts.resolve');
+});
+
+// Runtime API Routes
+Route::prefix('runtime')->group(function () {
+    Route::get('/summary', [RuntimeController::class, 'summary'])->name('api.runtime.summary');
+    Route::get('/running', [RuntimeController::class, 'running'])->name('api.runtime.running');
+    Route::get('/analytics', [RuntimeController::class, 'analytics'])->name('api.runtime.analytics');
+    Route::get('/', [RuntimeController::class, 'index'])->name('api.runtime.index');
+    Route::get('/{id}', [RuntimeController::class, 'show'])->name('api.runtime.show');
+    Route::get('/generator/{generatorId}/stats', [RuntimeController::class, 'generatorStats'])->name('api.runtime.generator-stats');
+    Route::post('/process', [RuntimeController::class, 'process'])->name('api.runtime.process');
+    Route::post('/{id}/stop', [RuntimeController::class, 'stop'])->name('api.runtime.stop');
 });

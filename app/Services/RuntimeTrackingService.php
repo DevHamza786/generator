@@ -1,0 +1,209 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\GeneratorRuntime;
+use App\Models\GeneratorLog;
+use App\Models\Generator;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
+
+class RuntimeTrackingService
+{
+    /**
+     * Process generator logs and track runtime based on voltage
+     */
+    public function processLogs()
+    {
+        // Get latest logs for all generators
+        $latestLogs = GeneratorLog::select('generator_id', 'client_id', 'sitename', 'LV1', 'LV2', 'LV3', 'log_timestamp')
+            ->whereIn('id', function($query) {
+                $query->selectRaw('MAX(id)')
+                    ->from('generator_logs')
+                    ->groupBy('generator_id');
+            })
+            ->get();
+
+        foreach ($latestLogs as $log) {
+            $this->processGeneratorRuntime($log);
+        }
+    }
+
+    /**
+     * Process runtime for a specific generator
+     */
+    private function processGeneratorRuntime($log)
+    {
+        $generatorId = $log->generator_id;
+        $hasVoltage = $this->hasVoltage($log);
+
+        // Get current running session for this generator
+        $currentRuntime = GeneratorRuntime::getCurrentRuntime($generatorId);
+
+        if ($hasVoltage && !$currentRuntime) {
+            // Generator started - create new runtime record
+            $this->startRuntime($log);
+        } elseif (!$hasVoltage && $currentRuntime) {
+            // Generator stopped - end current runtime
+            $this->stopRuntime($currentRuntime, $log);
+        } elseif ($hasVoltage && $currentRuntime) {
+            // Generator still running - update if needed
+            $this->updateRunningRuntime($currentRuntime, $log);
+        }
+    }
+
+    /**
+     * Check if generator has voltage on any line
+     */
+    private function hasVoltage($log)
+    {
+        return ($log->LV1 > 0) || ($log->LV2 > 0) || ($log->LV3 > 0);
+    }
+
+    /**
+     * Start a new runtime session
+     */
+    private function startRuntime($log)
+    {
+        try {
+            GeneratorRuntime::create([
+                'generator_id' => $log->generator_id,
+                'client_id' => $log->client_id,
+                'sitename' => $log->sitename,
+                'start_time' => $log->log_timestamp,
+                'start_voltage_l1' => $log->LV1,
+                'start_voltage_l2' => $log->LV2,
+                'start_voltage_l3' => $log->LV3,
+                'status' => 'running',
+                'notes' => 'Auto-started based on voltage detection'
+            ]);
+
+            Log::info("Runtime started for generator {$log->generator_id} at {$log->log_timestamp}");
+        } catch (\Exception $e) {
+            Log::error("Failed to start runtime for generator {$log->generator_id}: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Stop a running session
+     */
+    private function stopRuntime($runtime, $log)
+    {
+        try {
+            $runtime->stop([
+                'LV1' => $log->LV1,
+                'LV2' => $log->LV2,
+                'LV3' => $log->LV3
+            ]);
+
+            Log::info("Runtime stopped for generator {$log->generator_id} at {$log->log_timestamp}. Duration: {$runtime->formatted_duration}");
+        } catch (\Exception $e) {
+            Log::error("Failed to stop runtime for generator {$log->generator_id}: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Update running runtime (for future enhancements)
+     */
+    private function updateRunningRuntime($runtime, $log)
+    {
+        // For now, just log that it's still running
+        // Could add features like updating max voltage, etc.
+    }
+
+    /**
+     * Get current runtime for a generator
+     */
+    public function getCurrentRuntime($generatorId)
+    {
+        return GeneratorRuntime::getCurrentRuntime($generatorId);
+    }
+
+    /**
+     * Get runtime statistics for a generator
+     */
+    public function getRuntimeStats($generatorId, $days = 7)
+    {
+        $runtimes = GeneratorRuntime::byGenerator($generatorId)
+            ->stopped()
+            ->where('start_time', '>=', now()->subDays($days))
+            ->get();
+
+        $totalDuration = $runtimes->sum('duration_seconds');
+        $sessionCount = $runtimes->count();
+        $averageDuration = $sessionCount > 0 ? $totalDuration / $sessionCount : 0;
+
+        return [
+            'total_sessions' => $sessionCount,
+            'total_duration_seconds' => $totalDuration,
+            'total_duration_formatted' => $this->formatDuration($totalDuration),
+            'average_duration_seconds' => $averageDuration,
+            'average_duration_formatted' => $this->formatDuration($averageDuration),
+            'runtimes' => $runtimes
+        ];
+    }
+
+    /**
+     * Get all currently running generators
+     */
+    public function getRunningGenerators()
+    {
+        return GeneratorRuntime::running()
+            ->with(['generator', 'client'])
+            ->get();
+    }
+
+    /**
+     * Get runtime summary for dashboard
+     */
+    public function getDashboardSummary()
+    {
+        $runningCount = GeneratorRuntime::running()->count();
+        $totalToday = GeneratorRuntime::whereDate('start_time', today())
+            ->stopped()
+            ->sum('duration_seconds');
+
+        $totalThisWeek = GeneratorRuntime::where('start_time', '>=', now()->startOfWeek())
+            ->stopped()
+            ->sum('duration_seconds');
+
+        return [
+            'currently_running' => $runningCount,
+            'total_today_seconds' => $totalToday,
+            'total_today_formatted' => $this->formatDuration($totalToday),
+            'total_week_seconds' => $totalThisWeek,
+            'total_week_formatted' => $this->formatDuration($totalThisWeek),
+        ];
+    }
+
+    /**
+     * Format duration in seconds to readable format
+     */
+    private function formatDuration($seconds)
+    {
+        if (!$seconds) {
+            return '00:00:00';
+        }
+
+        $hours = floor($seconds / 3600);
+        $minutes = floor(($seconds % 3600) / 60);
+        $seconds = $seconds % 60;
+
+        return sprintf('%02d:%02d:%02d', $hours, $minutes, $seconds);
+    }
+
+    /**
+     * Clean up old runtime records (optional maintenance)
+     */
+    public function cleanupOldRecords($daysToKeep = 90)
+    {
+        $cutoffDate = now()->subDays($daysToKeep);
+
+        $deletedCount = GeneratorRuntime::where('start_time', '<', $cutoffDate)
+            ->where('status', 'stopped')
+            ->delete();
+
+        Log::info("Cleaned up {$deletedCount} old runtime records");
+        return $deletedCount;
+    }
+}

@@ -6,8 +6,10 @@ use Illuminate\Http\Request;
 use App\Models\GeneratorStatus;
 use App\Models\GeneratorLog;
 use App\Models\GeneratorWriteLog;
+use App\Models\GeneratorRuntime;
 use App\Models\Client;
 use App\Models\Generator;
+use App\Services\RuntimeTrackingService;
 
 class DashboardController extends Controller
 {
@@ -238,5 +240,167 @@ class DashboardController extends Controller
                 'message' => 'Error getting power status: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Display the preventive maintenance page
+     */
+    public function preventiveMaintenance()
+    {
+        // Get all generators with their runtime data
+        $generators = Generator::with(['client', 'latestLog'])->get();
+
+        // Get runtime statistics for each generator
+        $runtimeService = app(RuntimeTrackingService::class);
+        $maintenanceData = [];
+
+        foreach ($generators as $generator) {
+            $runtimeStats = $runtimeService->getRuntimeStats($generator->generator_id, 30); // Last 30 days
+            $currentRuntime = GeneratorRuntime::getCurrentRuntime($generator->generator_id);
+
+            // Calculate maintenance recommendations
+            $maintenanceRecommendations = $this->calculateMaintenanceRecommendations($generator, $runtimeStats, $currentRuntime);
+
+            $maintenanceData[] = [
+                'generator' => $generator,
+                'runtime_stats' => $runtimeStats,
+                'current_runtime' => $currentRuntime,
+                'recommendations' => $maintenanceRecommendations,
+                'last_maintenance' => $this->getLastMaintenanceDate($generator->generator_id),
+                'next_maintenance' => $this->getNextMaintenanceDate($generator->generator_id, $runtimeStats),
+            ];
+        }
+
+        // Get maintenance summary
+        $maintenanceSummary = $this->getMaintenanceSummary($maintenanceData);
+
+        return view('preventive-maintenance', compact('maintenanceData', 'maintenanceSummary'));
+    }
+
+    /**
+     * Calculate maintenance recommendations for a generator
+     */
+    private function calculateMaintenanceRecommendations($generator, $runtimeStats, $currentRuntime)
+    {
+        $recommendations = [];
+
+        // Check runtime hours
+        $totalHours = $runtimeStats['total_duration_seconds'] / 3600;
+        if ($totalHours > 500) {
+            $recommendations[] = [
+                'type' => 'runtime',
+                'priority' => 'high',
+                'message' => 'Generator has exceeded 500 runtime hours. Schedule major maintenance.',
+                'action' => 'Schedule oil change, filter replacement, and full inspection'
+            ];
+        } elseif ($totalHours > 250) {
+            $recommendations[] = [
+                'type' => 'runtime',
+                'priority' => 'medium',
+                'message' => 'Generator approaching 500 runtime hours. Plan maintenance soon.',
+                'action' => 'Schedule preventive maintenance within 2 weeks'
+            ];
+        }
+
+        // Check current runtime
+        if ($currentRuntime) {
+            $currentHours = $currentRuntime->start_time->diffInHours(now());
+            if ($currentHours > 24) {
+                $recommendations[] = [
+                    'type' => 'continuous_runtime',
+                    'priority' => 'critical',
+                    'message' => 'Generator has been running continuously for ' . $currentHours . ' hours.',
+                    'action' => 'Immediate shutdown recommended for cooling and inspection'
+                ];
+            } elseif ($currentHours > 12) {
+                $recommendations[] = [
+                    'type' => 'continuous_runtime',
+                    'priority' => 'high',
+                    'message' => 'Generator has been running for ' . $currentHours . ' hours.',
+                    'action' => 'Monitor closely and plan shutdown for maintenance'
+                ];
+            }
+        }
+
+        // Check frequency of use
+        if ($runtimeStats['total_sessions'] > 50) {
+            $recommendations[] = [
+                'type' => 'frequency',
+                'priority' => 'medium',
+                'message' => 'High frequency of starts/stops (' . $runtimeStats['total_sessions'] . ' sessions).',
+                'action' => 'Check starter motor and battery condition'
+            ];
+        }
+
+        return $recommendations;
+    }
+
+    /**
+     * Get last maintenance date for a generator
+     */
+    private function getLastMaintenanceDate($generatorId)
+    {
+        // This would typically come from a maintenance records table
+        // For now, we'll simulate based on runtime data
+        $lastRuntime = GeneratorRuntime::where('generator_id', $generatorId)
+            ->where('status', 'stopped')
+            ->orderBy('end_time', 'desc')
+            ->first();
+
+        return $lastRuntime ? $lastRuntime->end_time->subDays(rand(7, 30)) : null;
+    }
+
+    /**
+     * Get next maintenance date for a generator
+     */
+    private function getNextMaintenanceDate($generatorId, $runtimeStats)
+    {
+        $lastMaintenance = $this->getLastMaintenanceDate($generatorId);
+        $totalHours = $runtimeStats['total_duration_seconds'] / 3600;
+
+        // Calculate next maintenance based on hours
+        $hoursUntilMaintenance = 500 - ($totalHours % 500);
+        $daysUntilMaintenance = $hoursUntilMaintenance / 24; // Assuming 24 hours per day
+
+        return now()->addDays($daysUntilMaintenance);
+    }
+
+    /**
+     * Get maintenance summary for all generators
+     */
+    private function getMaintenanceSummary($maintenanceData)
+    {
+        $summary = [
+            'total_generators' => count($maintenanceData),
+            'overdue_maintenance' => 0,
+            'due_soon' => 0,
+            'critical_alerts' => 0,
+            'high_priority' => 0,
+            'medium_priority' => 0,
+        ];
+
+        foreach ($maintenanceData as $data) {
+            foreach ($data['recommendations'] as $recommendation) {
+                switch ($recommendation['priority']) {
+                    case 'critical':
+                        $summary['critical_alerts']++;
+                        break;
+                    case 'high':
+                        $summary['high_priority']++;
+                        break;
+                    case 'medium':
+                        $summary['medium_priority']++;
+                        break;
+                }
+            }
+
+            if ($data['next_maintenance'] && $data['next_maintenance']->isPast()) {
+                $summary['overdue_maintenance']++;
+            } elseif ($data['next_maintenance'] && $data['next_maintenance']->diffInDays(now()) <= 7) {
+                $summary['due_soon']++;
+            }
+        }
+
+        return $summary;
     }
 }
