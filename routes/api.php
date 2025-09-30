@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\GeneratorController;
+use App\Http\Controllers\Api\AlertController;
 
 /*
 |--------------------------------------------------------------------------
@@ -29,4 +30,15 @@ Route::prefix('generator')->group(function () {
 
     // Power status endpoint
     Route::post('/power-status', [GeneratorController::class, 'getPowerStatus'])->name('api.generator.power-status');
+});
+
+// Alert API Routes
+Route::prefix('alerts')->group(function () {
+    Route::get('/', [AlertController::class, 'index'])->name('api.alerts.index');
+    Route::get('/stats', [AlertController::class, 'stats'])->name('api.alerts.stats');
+    Route::get('/recent', [AlertController::class, 'recent'])->name('api.alerts.recent');
+    Route::post('/check', [AlertController::class, 'check'])->name('api.alerts.check');
+    Route::post('/{id}/acknowledge', [AlertController::class, 'acknowledge'])->name('api.alerts.acknowledge');
+    Route::post('/acknowledge-all', [AlertController::class, 'acknowledgeAll'])->name('api.alerts.acknowledge-all');
+    Route::post('/{id}/resolve', [AlertController::class, 'resolve'])->name('api.alerts.resolve');
 });

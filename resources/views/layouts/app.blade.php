@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title', 'Generator Monitor') - Enterprise Portal</title>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.css" rel="stylesheet">
@@ -512,6 +513,45 @@
             animation: slideInRight 0.6s ease-out;
         }
 
+        /* Notification Bell */
+        .notification-bell {
+            background: rgba(242, 159, 103, 0.1);
+            border: 1px solid rgba(242, 159, 103, 0.2);
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+            cursor: pointer;
+            color: #F29F67;
+        }
+
+        .notification-bell:hover {
+            background: rgba(242, 159, 103, 0.2);
+            border-color: rgba(242, 159, 103, 0.4);
+            transform: scale(1.1);
+            box-shadow: 0 4px 15px rgba(242, 159, 103, 0.25);
+        }
+
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #dc3545;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: pulse 2s infinite;
+        }
+
         /* Theme Toggle */
         .theme-toggle {
             background: rgba(59, 143, 243, 0.1);
@@ -675,6 +715,51 @@
             border-color: white !important;
         }
 
+        /* Notification Modal Light Theme */
+        [data-bs-theme="light"] #notificationsModal .modal-content {
+            background: white !important;
+            border: 1px solid rgba(0, 0, 0, 0.1) !important;
+        }
+
+        [data-bs-theme="light"] #notificationsModal .modal-header {
+            background: white !important;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1) !important;
+        }
+
+        [data-bs-theme="light"] #notificationsModal .modal-body {
+            background: white !important;
+        }
+
+        [data-bs-theme="light"] #notificationsModal .modal-footer {
+            background: white !important;
+            border-top: 1px solid rgba(0, 0, 0, 0.1) !important;
+        }
+
+        [data-bs-theme="light"] #notificationsModal .modal-title {
+            color: var(--primary-dark) !important;
+        }
+
+        [data-bs-theme="light"] #notificationsModal .alert-item {
+            background: white !important;
+            border: 1px solid rgba(0, 0, 0, 0.1) !important;
+        }
+
+        [data-bs-theme="light"] #notificationsModal .alert-item .card-body {
+            background: white !important;
+        }
+
+        [data-bs-theme="light"] #notificationsModal .alert-item h6 {
+            color: var(--primary-dark) !important;
+        }
+
+        [data-bs-theme="light"] #notificationsModal .alert-item p {
+            color: rgba(30, 30, 44, 0.7) !important;
+        }
+
+        [data-bs-theme="light"] #notificationsModal .alert-item .text-muted {
+            color: rgba(30, 30, 44, 0.6) !important;
+        }
+
         /* Breadcrumb */
         .breadcrumb-modern {
             background: transparent;
@@ -792,6 +877,13 @@
                 </ul>
 
                 <ul class="navbar-nav align-items-center">
+                    <!-- Notification Bell -->
+                    <li class="nav-item me-3">
+                        <div class="notification-bell position-relative" onclick="showNotificationsModal()">
+                            <i class="fas fa-bell fa-lg"></i>
+                            <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
+                        </div>
+                    </li>
                     <li class="nav-item me-3">
                         <div class="theme-toggle" onclick="toggleTheme()">
                             <i class="fas fa-moon" id="themeIcon"></i>
@@ -932,6 +1024,44 @@
         </div>
     </div>
 
+    <!-- Notifications Modal -->
+    <div class="modal fade" id="notificationsModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content card-modern">
+                <div class="modal-header border-0">
+                    <h5 class="modal-title">
+                        <i class="fas fa-bell me-2"></i>
+                        System Alerts
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="alert-summary">
+                            <span class="badge badge-danger-modern badge-modern me-2" id="criticalAlerts">0 Critical</span>
+                            <span class="badge badge-warning-modern badge-modern me-2" id="highAlerts">0 High</span>
+                            <span class="badge badge-info-modern badge-modern" id="mediumAlerts">0 Medium</span>
+                        </div>
+                        <button class="btn btn-sm btn-outline-primary" onclick="refreshAlerts()">
+                            <i class="fas fa-sync-alt me-1"></i>Refresh
+                        </button>
+                    </div>
+                    <div id="alertsList">
+                        <!-- Alerts will be loaded here -->
+                        <div class="text-center py-4">
+                            <i class="fas fa-spinner fa-spin fa-2x text-muted"></i>
+                            <p class="text-muted mt-2">Loading alerts...</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-outline-secondary" onclick="markAllAsRead()">Mark All as Read</button>
+                    <button type="button" class="btn btn-modern" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Enhanced Settings Modal -->
     <div class="modal fade" id="settingsModal" tabindex="-1">
         <div class="modal-dialog">
@@ -1044,6 +1174,163 @@
             new bootstrap.Modal(document.getElementById('settingsModal')).show();
         }
 
+        // Notification functions
+        function showNotificationsModal() {
+            const modal = new bootstrap.Modal(document.getElementById('notificationsModal'));
+            modal.show();
+            loadAlerts();
+        }
+
+        function loadAlerts() {
+            $.get('/api/alerts', function(response) {
+                if (response.success) {
+                    updateAlertsList(response.data);
+                    updateAlertBadges(response.data);
+                }
+            }).fail(function() {
+                $('#alertsList').html(`
+                    <div class="text-center py-4">
+                        <i class="fas fa-exclamation-triangle fa-2x text-warning"></i>
+                        <p class="text-muted mt-2">Failed to load alerts</p>
+                    </div>
+                `);
+            });
+        }
+
+        function updateAlertsList(alerts) {
+            const alertsList = $('#alertsList');
+
+            if (alerts.length === 0) {
+                alertsList.html(`
+                    <div class="text-center py-4">
+                        <i class="fas fa-check-circle fa-2x text-success"></i>
+                        <p class="text-muted mt-2">No active alerts</p>
+                    </div>
+                `);
+                return;
+            }
+
+            let html = '';
+            alerts.forEach(function(alert) {
+                const severityClass = getSeverityClass(alert.severity);
+                const typeIcon = getTypeIcon(alert.type);
+                const timeAgo = getTimeAgo(alert.triggered_at);
+
+                html += `
+                    <div class="alert-item card card-modern mb-3" data-alert-id="${alert.id}">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="flex-grow-1">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <i class="${typeIcon} me-2 ${severityClass}"></i>
+                                        <h6 class="mb-0">${alert.title}</h6>
+                                        <span class="badge ${severityClass} badge-modern ms-2">${alert.severity}</span>
+                                    </div>
+                                    <p class="text-muted mb-2">${alert.message}</p>
+                                    <div class="d-flex align-items-center text-muted small">
+                                        <i class="fas fa-clock me-1"></i>
+                                        <span>${timeAgo}</span>
+                                        <span class="mx-2">•</span>
+                                        <i class="fas fa-microchip me-1"></i>
+                                        <span>Generator ${alert.generator_id}</span>
+                                        ${alert.sitename ? `<span class="mx-2">•</span><i class="fas fa-map-marker-alt me-1"></i><span>${alert.sitename}</span>` : ''}
+                                    </div>
+                                </div>
+                                <div class="alert-actions">
+                                    <button class="btn btn-sm btn-outline-primary" onclick="acknowledgeAlert(${alert.id})">
+                                        <i class="fas fa-check me-1"></i>Acknowledge
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            alertsList.html(html);
+        }
+
+        function updateAlertBadges(alerts) {
+            const badge = $('#notificationBadge');
+            const criticalCount = alerts.filter(a => a.severity === 'critical').length;
+            const highCount = alerts.filter(a => a.severity === 'high').length;
+            const mediumCount = alerts.filter(a => a.severity === 'medium').length;
+
+            $('#criticalAlerts').text(`${criticalCount} Critical`);
+            $('#highAlerts').text(`${highCount} High`);
+            $('#mediumAlerts').text(`${mediumCount} Medium`);
+
+            const totalCount = alerts.length;
+            if (totalCount > 0) {
+                badge.text(totalCount).show();
+            } else {
+                badge.hide();
+            }
+        }
+
+        function getSeverityClass(severity) {
+            switch(severity) {
+                case 'critical': return 'text-danger';
+                case 'high': return 'text-warning';
+                case 'medium': return 'text-info';
+                case 'low': return 'text-secondary';
+                default: return 'text-muted';
+            }
+        }
+
+        function getTypeIcon(type) {
+            switch(type) {
+                case 'fuel_low': return 'fas fa-gas-pump';
+                case 'battery_voltage': return 'fas fa-battery-half';
+                case 'line_current': return 'fas fa-bolt';
+                default: return 'fas fa-exclamation-triangle';
+            }
+        }
+
+        function getTimeAgo(timestamp) {
+            const now = new Date();
+            const alertTime = new Date(timestamp);
+            const diffMs = now - alertTime;
+            const diffMins = Math.floor(diffMs / 60000);
+            const diffHours = Math.floor(diffMins / 60);
+            const diffDays = Math.floor(diffHours / 24);
+
+            if (diffMins < 1) return 'Just now';
+            if (diffMins < 60) return `${diffMins}m ago`;
+            if (diffHours < 24) return `${diffHours}h ago`;
+            return `${diffDays}d ago`;
+        }
+
+        function acknowledgeAlert(alertId) {
+            $.post('/api/alerts/' + alertId + '/acknowledge', {
+                _token: $('meta[name="csrf-token"]').attr('content')
+            }, function(response) {
+                if (response.success) {
+                    showNotification('Alert acknowledged', 'success');
+                    loadAlerts();
+                }
+            }).fail(function() {
+                showNotification('Failed to acknowledge alert', 'error');
+            });
+        }
+
+        function markAllAsRead() {
+            $.post('/api/alerts/acknowledge-all', {
+                _token: $('meta[name="csrf-token"]').attr('content')
+            }, function(response) {
+                if (response.success) {
+                    showNotification('All alerts acknowledged', 'success');
+                    loadAlerts();
+                }
+            }).fail(function() {
+                showNotification('Failed to acknowledge alerts', 'error');
+            });
+        }
+
+        function refreshAlerts() {
+            loadAlerts();
+        }
+
         // Auto-refresh functionality
         let refreshInterval = 30000; // 30 seconds default
 
@@ -1102,11 +1389,19 @@
             refreshData();
             updateRefreshIndicator();
 
+            // Load initial alerts
+            loadAlerts();
+
             // Add loading states to cards
             $('.card-modern').addClass('loading');
             setTimeout(() => {
                 $('.card-modern').removeClass('loading');
             }, 1000);
+
+            // Auto-refresh alerts every 30 seconds
+            setInterval(function() {
+                loadAlerts();
+            }, 30000);
         });
     </script>
     @yield('scripts')

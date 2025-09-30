@@ -1177,6 +1177,24 @@ input:checked + .slider:before {
         setInterval(loadPowerStatus, 30000);
     });
 
+    // Alert checking function
+    function checkAlerts() {
+        $.post('/api/alerts/check', {
+            _token: $('meta[name="csrf-token"]').attr('content')
+        }, function(response) {
+            if (response.success) {
+                // Update notification badge if there are active alerts
+                if (response.active_alerts > 0) {
+                    $('#notificationBadge').text(response.active_alerts).show();
+                } else {
+                    $('#notificationBadge').hide();
+                }
+            }
+        }).fail(function() {
+            console.error('Failed to check alerts');
+        });
+    }
+
     function filterLogsTable(tableId, generatorId) {
         const table = document.getElementById(tableId);
         const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
