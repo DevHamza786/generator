@@ -760,6 +760,99 @@
             color: rgba(30, 30, 44, 0.6) !important;
         }
 
+        /* Dropdown Menu Light Theme Fixes */
+        [data-bs-theme="light"] .dropdown-menu {
+            background: white !important;
+            border: 1px solid rgba(0, 0, 0, 0.15) !important;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+        }
+
+        [data-bs-theme="light"] .dropdown-item {
+            color: var(--primary-dark) !important;
+        }
+
+        [data-bs-theme="light"] .dropdown-item:hover {
+            background-color: rgba(242, 159, 103, 0.1) !important;
+            color: var(--primary-dark) !important;
+        }
+
+        [data-bs-theme="light"] .dropdown-item:focus {
+            background-color: rgba(242, 159, 103, 0.2) !important;
+            color: var(--primary-dark) !important;
+        }
+
+        [data-bs-theme="light"] .dropdown-divider {
+            border-top: 1px solid rgba(0, 0, 0, 0.1) !important;
+        }
+
+        [data-bs-theme="light"] .dropdown-header {
+            color: rgba(30, 30, 44, 0.7) !important;
+        }
+
+        [data-bs-theme="light"] .user-dropdown {
+            background: white !important;
+            border: 1px solid rgba(0, 0, 0, 0.15) !important;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+        }
+
+        [data-bs-theme="light"] .user-dropdown .dropdown-item {
+            color: var(--primary-dark) !important;
+        }
+
+        [data-bs-theme="light"] .user-dropdown .dropdown-item:hover {
+            background-color: rgba(242, 159, 103, 0.1) !important;
+        }
+
+        [data-bs-theme="light"] .user-dropdown .dropdown-item.text-danger {
+            color: #dc3545 !important;
+        }
+
+        [data-bs-theme="light"] .user-dropdown .dropdown-item.text-danger:hover {
+            background-color: rgba(220, 53, 69, 0.1) !important;
+        }
+
+        /* Additional Dropdown Visibility Fixes */
+        [data-bs-theme="light"] .dropdown-menu.show {
+            display: block !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+            z-index: 1050 !important;
+        }
+
+        [data-bs-theme="light"] .dropdown-menu {
+            display: none !important;
+            opacity: 0 !important;
+            visibility: hidden !important;
+            transition: all 0.15s ease-in-out !important;
+        }
+
+        [data-bs-theme="light"] .dropdown:hover .dropdown-menu {
+            display: block !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+        }
+
+        [data-bs-theme="light"] .dropdown-toggle:focus + .dropdown-menu {
+            display: block !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+        }
+
+        /* Force dropdown visibility in light theme */
+        [data-bs-theme="light"] .navbar-nav .dropdown-menu {
+            position: absolute !important;
+            top: 100% !important;
+            left: 0 !important;
+            z-index: 1000 !important;
+            min-width: 10rem !important;
+            padding: 0.5rem 0 !important;
+            margin: 0.125rem 0 0 !important;
+            background-color: white !important;
+            border: 1px solid rgba(0, 0, 0, 0.15) !important;
+            border-radius: 0.375rem !important;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.175) !important;
+        }
+
         /* Breadcrumb */
         .breadcrumb-modern {
             background: transparent;
@@ -1402,7 +1495,57 @@
             setInterval(function() {
                 loadAlerts();
             }, 30000);
+
+            // Fix dropdown visibility in light theme
+            fixDropdownVisibility();
         });
+
+        // Function to fix dropdown visibility
+        function fixDropdownVisibility() {
+            // Force dropdown to show when clicked
+            $('.dropdown-toggle').on('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const dropdown = $(this).next('.dropdown-menu');
+                const isLightTheme = document.documentElement.getAttribute('data-bs-theme') === 'light';
+
+                if (isLightTheme) {
+                    // Close other dropdowns
+                    $('.dropdown-menu').removeClass('show');
+
+                    // Toggle current dropdown
+                    dropdown.toggleClass('show');
+
+                    // Force visibility
+                    if (dropdown.hasClass('show')) {
+                        dropdown.css({
+                            'display': 'block',
+                            'opacity': '1',
+                            'visibility': 'visible',
+                            'z-index': '1050'
+                        });
+                    } else {
+                        dropdown.css({
+                            'display': 'none',
+                            'opacity': '0',
+                            'visibility': 'hidden'
+                        });
+                    }
+                }
+            });
+
+            // Close dropdown when clicking outside
+            $(document).on('click', function(e) {
+                if (!$(e.target).closest('.dropdown').length) {
+                    $('.dropdown-menu').removeClass('show').css({
+                        'display': 'none',
+                        'opacity': '0',
+                        'visibility': 'hidden'
+                    });
+                }
+            });
+        }
     </script>
     @yield('scripts')
 </body>
