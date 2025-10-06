@@ -24,6 +24,14 @@
             </div>
             <div class="col-md-4 text-end">
                 <div class="d-flex justify-content-end gap-3 align-items-center">
+                    <!-- Alert Notification Badge -->
+                    <div class="position-relative">
+                        <button class="btn btn-outline-light btn-sm" onclick="showAlertDetails()" title="View Alerts">
+                            <i class="fas fa-bell"></i>
+                            <span class="badge bg-danger position-absolute top-0 start-100 translate-middle" 
+                                  id="notificationBadge" style="display: none; font-size: 0.7rem;">0</span>
+                        </button>
+                    </div>
                     <div class="text-center">
                         <div class="h3 mb-0 text-white fw-bold" id="currentTime">{{ now()->format('H:i') }}</div>
                         <small class="text-white-50">{{ now()->format('M d, Y') }}</small>
@@ -1370,6 +1378,12 @@ select.form-select {
             });
         }, 15000);
 
+        // Check for alerts every 30 seconds
+        setInterval(checkAlerts, 30000);
+        
+        // Initial alert check on page load
+        checkAlerts();
+
         // Runtime generator filter change handler
         $('#runtimeGeneratorFilter').on('change', function() {
             const generatorId = $(this).val();
@@ -1391,12 +1405,54 @@ select.form-select {
                 // Update notification badge if there are active alerts
                 if (response.active_alerts > 0) {
                     $('#notificationBadge').text(response.active_alerts).show();
+                    
+                    // Show notification for new alerts
+                    if (response.active_alerts > 0) {
+                        showNotification(`⚠️ ${response.active_alerts} Active Alert${response.active_alerts > 1 ? 's' : ''} Detected!`, 'warning');
+                    }
                 } else {
                     $('#notificationBadge').hide();
                 }
             }
         }).fail(function() {
             console.error('Failed to check alerts');
+        });
+    }
+
+    // Show alert details function
+    function showAlertDetails() {
+        $.get('/api/alerts/', function(response) {
+            if (response.success && response.data.length > 0) {
+                let alertHtml = '<div class="alert-list">';
+                response.data.forEach(function(alert) {
+                    const severityClass = {
+                        'low': 'text-info',
+                        'medium': 'text-warning', 
+                        'high': 'text-danger',
+                        'critical': 'text-danger fw-bold'
+                    }[alert.severity] || 'text-secondary';
+                    
+                    alertHtml += `
+                        <div class="alert-item p-3 mb-2 border rounded" style="background: rgba(255,255,255,0.05);">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="mb-1 text-white">${alert.title}</h6>
+                                    <p class="mb-1 text-white-50 small">${alert.message}</p>
+                                    <small class="text-muted">${alert.generator_id} • ${new Date(alert.triggered_at).toLocaleString()}</small>
+                                </div>
+                                <span class="badge ${severityClass}">${alert.severity.toUpperCase()}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+                alertHtml += '</div>';
+                
+                showNotification(alertHtml, 'info');
+            } else {
+                showNotification('✅ No active alerts', 'success');
+            }
+        }).fail(function() {
+            showNotification('❌ Failed to load alerts', 'danger');
         });
     }
 

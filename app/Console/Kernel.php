@@ -26,6 +26,13 @@ class Kernel extends ConsoleKernel
                  ->withoutOverlapping()
                  ->appendOutputTo(storage_path('logs/device-status.log'));
 
+        // Alert checking - monitor for generator issues
+        // Runs every 2 minutes to check for alerts
+        $schedule->command('alerts:check')
+                 ->everyTwoMinutes()
+                 ->withoutOverlapping()
+                 ->appendOutputTo(storage_path('logs/alerts.log'));
+
         // Optional: Add email notification for cleanup results
         // Uncomment the line below if you want email notifications
         // ->emailOutputTo('admin@yourdomain.com');

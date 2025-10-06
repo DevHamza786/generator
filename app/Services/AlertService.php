@@ -20,6 +20,7 @@ class AlertService
         $this->checkBatteryVoltageAlerts();
         $this->checkLineCurrentAlerts();
         $this->checkRuntimeAlerts();
+        $this->checkPowerOffAlerts();
     }
 
     /**
@@ -297,6 +298,75 @@ class AlertService
                 ],
                 'critical'
             );
+        }
+    }
+
+    /**
+     * Check for power off alerts (generator not receiving line data or power status inactive)
+     */
+    private function checkPowerOffAlerts()
+    {
+        // Get all generators
+        $generators = \App\Models\Generator::all();
+        
+        foreach ($generators as $generator) {
+            // Check if generator has recent data (within last 5 minutes)
+            $recentLogs = GeneratorLog::where('generator_id', $generator->generator_id)
+                ->where('log_timestamp', '>=', now()->subMinutes(5))
+                ->orderBy('log_timestamp', 'desc')
+                ->get();
+
+            $isPoweredOff = false;
+            $reason = '';
+
+            if ($recentLogs->isEmpty()) {
+                // No recent data at all
+                $isPoweredOff = true;
+                $reason = 'No data received in last 5 minutes';
+            } else {
+                $latestLog = $recentLogs->first();
+                
+                // Check if all line currents are 0 or null
+                $line1Zero = ($latestLog->LI1 === null || $latestLog->LI1 == 0);
+                $line2Zero = ($latestLog->LI2 === null || $latestLog->LI2 == 0);
+                $line3Zero = ($latestLog->LI3 === null || $latestLog->LI3 == 0);
+                
+                // Check if power status is inactive (GS = false)
+                $powerStatusInactive = ($latestLog->GS === false || $latestLog->GS === null);
+                
+                if ($line1Zero && $line2Zero && $line3Zero) {
+                    $isPoweredOff = true;
+                    $reason = 'All line currents are zero (LI1, LI2, LI3 = 0)';
+                } elseif ($powerStatusInactive) {
+                    $isPoweredOff = true;
+                    $reason = 'Power status is inactive (GS = false)';
+                }
+            }
+
+            if ($isPoweredOff) {
+                $this->createAlertIfNotExists(
+                    $generator->generator_id,
+                    $generator->client_id,
+                    $generator->sitename,
+                    'power_off',
+                    'Generator Powered Off Alert',
+                    "Generator {$generator->generator_id} appears to be powered off. {$reason}",
+                    [
+                        'reason' => $reason,
+                        'line1_current' => $recentLogs->first()->LI1 ?? 'N/A',
+                        'line2_current' => $recentLogs->first()->LI2 ?? 'N/A',
+                        'line3_current' => $recentLogs->first()->LI3 ?? 'N/A',
+                        'power_status' => $recentLogs->first()->GS ?? 'N/A',
+                        'last_data_time' => $recentLogs->first()->log_timestamp ?? 'No recent data',
+                        'data_received_minutes_ago' => $recentLogs->first() ? 
+                            now()->diffInMinutes($recentLogs->first()->log_timestamp) : 'N/A'
+                    ],
+                    'high'
+                );
+            } else {
+                // Resolve any existing power off alerts for this generator
+                $this->resolveAlerts($generator->generator_id, 'power_off');
+            }
         }
     }
 }
