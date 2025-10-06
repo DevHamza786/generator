@@ -408,7 +408,7 @@
                                 <tbody>
                                 @foreach($latestLogs->take(10) as $log)
                                 <tr>
-                                    <td class="text-white-50">{{ $log->log_timestamp->format('H:i:s') }}</td>
+                                    <td class="text-white-50">{{ $log->log_timestamp->format('M-d H:i:s') }}</td>
                                     <td>
                                         <span class="badge badge-info-modern badge-modern">{{ $log->generator_id }}</span>
                                     </td>
@@ -477,7 +477,7 @@
                                 <tbody>
                                 @foreach($latestWriteLogs->take(10) as $writeLog)
                                 <tr>
-                                    <td class="text-white-50">{{ $writeLog->write_timestamp->format('H:i:s') }}</td>
+                                    <td class="text-white-50">{{ $writeLog->write_timestamp->format('M-d H:i:s') }}</td>
                                     <td>
                                         <span class="badge badge-info-modern badge-modern">{{ $writeLog->generator_id }}</span>
                                     </td>
@@ -933,7 +933,7 @@ input:checked + .slider:before {
                     response.data.slice(0, 10).forEach(function(log) {
                         const row = `
                             <tr>
-                                <td class="text-white-50">${new Date(log.log_timestamp).toLocaleTimeString()}</td>
+                                <td class="text-white-50">${new Date(log.log_timestamp).toLocaleDateString('en-US', {month: 'short', day: 'numeric'})} ${new Date(log.log_timestamp).toLocaleTimeString('en-US', {hour12: false})}</td>
                                 <td><span class="badge badge-info-modern badge-modern">${log.generator_id}</span></td>
                                 <td class="text-white">${log.FL}%</td>
                                 <td class="text-white">${log.BV}V</td>
@@ -967,7 +967,7 @@ input:checked + .slider:before {
                     response.data.slice(0, 10).forEach(function(writeLog) {
                         const row = `
                             <tr>
-                                <td class="text-white-50">${new Date(writeLog.write_timestamp).toLocaleTimeString()}</td>
+                                <td class="text-white-50">${new Date(writeLog.write_timestamp).toLocaleDateString('en-US', {month: 'short', day: 'numeric'})} ${new Date(writeLog.write_timestamp).toLocaleTimeString('en-US', {hour12: false})}</td>
                                 <td><span class="badge badge-info-modern badge-modern">${writeLog.generator_id}</span></td>
                                 <td class="text-white">${writeLog.FL}%</td>
                                 <td class="text-white">${writeLog.BV}V</td>

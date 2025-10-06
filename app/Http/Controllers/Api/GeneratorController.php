@@ -134,7 +134,7 @@ class GeneratorController extends Controller
             }
 
             $savedCount = 0;
-            $currentTime = now();
+            $currentTime = now()->setTimezone('Asia/Karachi');
 
             // Get or create client
             $client = $this->getOrCreateClient($data['client']);
@@ -349,9 +349,9 @@ class GeneratorController extends Controller
             $hour = intval($time / 100);
             $minute = $time % 100;
 
-            return \Carbon\Carbon::create($year, $month, $day, $hour, $minute, 0);
+            return \Carbon\Carbon::create($year, $month, $day, $hour, $minute, 0, 'Asia/Karachi');
         }
 
-        return now();
+        return now()->setTimezone('Asia/Karachi');
     }
 }
