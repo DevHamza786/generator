@@ -20,7 +20,7 @@ class DashboardController extends Controller
     {
         // Get clients and generators for filtering
         $clients = Client::with('generators')->get();
-        $generators = Generator::with('client')->select('generator_id', 'name', 'sitename', 'client_id')->get();
+        $generators = Generator::with('client')->select('id', 'generator_id', 'name', 'sitename', 'kva_power', 'client_id')->get();
 
         // Get latest logs with client and generator info
         $latestLogs = GeneratorLog::with(['client', 'generator'])
@@ -75,9 +75,7 @@ class DashboardController extends Controller
         }
 
         if ($request->filled('generator_id')) {
-            $query->whereHas('generator', function($q) use ($request) {
-                $q->where('generator_id', $request->generator_id);
-            });
+            $query->where('generator_id', $request->generator_id);
         }
 
         if ($request->filled('sitename')) {
@@ -98,11 +96,19 @@ class DashboardController extends Controller
 
         $perPage = $request->get('per_page', 50); // Default to 50, allow 20, 50, 100
         $perPage = in_array($perPage, [20, 50, 100]) ? $perPage : 50;
-        $logs = $query->orderBy('log_timestamp', 'desc')->paginate($perPage);
+        
+        // Handle sorting
+        $sortBy = $request->get('sort_by', 'log_timestamp');
+        $sortDirection = $request->get('sort_direction', 'desc');
+        
+        // Validate sort direction
+        $sortDirection = in_array($sortDirection, ['asc', 'desc']) ? $sortDirection : 'desc';
+        
+        $logs = $query->orderBy($sortBy, $sortDirection)->paginate($perPage);
 
         // Get filter options
         $clients = Client::all();
-        $generators = Generator::select('generator_id', 'name', 'sitename')->get();
+        $generators = Generator::select('id', 'generator_id', 'name', 'sitename', 'kva_power')->get();
         $generatorIds = $generators->pluck('generator_id')->sort();
 
         return view('logs', compact('logs', 'clients', 'generatorIds', 'generators'));
@@ -121,9 +127,7 @@ class DashboardController extends Controller
         }
 
         if ($request->filled('generator_id')) {
-            $query->whereHas('generator', function($q) use ($request) {
-                $q->where('generator_id', $request->generator_id);
-            });
+            $query->where('generator_id', $request->generator_id);
         }
 
         if ($request->filled('sitename')) {
@@ -144,11 +148,19 @@ class DashboardController extends Controller
 
         $perPage = $request->get('per_page', 50); // Default to 50, allow 20, 50, 100
         $perPage = in_array($perPage, [20, 50, 100]) ? $perPage : 50;
-        $writeLogs = $query->orderBy('write_timestamp', 'desc')->paginate($perPage);
+        
+        // Handle sorting
+        $sortBy = $request->get('sort_by', 'write_timestamp');
+        $sortDirection = $request->get('sort_direction', 'desc');
+        
+        // Validate sort direction
+        $sortDirection = in_array($sortDirection, ['asc', 'desc']) ? $sortDirection : 'desc';
+        
+        $writeLogs = $query->orderBy($sortBy, $sortDirection)->paginate($perPage);
 
         // Get filter options
         $clients = Client::all();
-        $generators = Generator::select('generator_id', 'name', 'sitename')->get();
+        $generators = Generator::select('id', 'generator_id', 'name', 'sitename', 'kva_power')->get();
         $writeLogGeneratorIds = $generators->pluck('generator_id')->sort();
 
         return view('write-logs', compact('writeLogs', 'clients', 'writeLogGeneratorIds', 'generators'));

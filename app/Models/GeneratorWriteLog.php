@@ -75,7 +75,7 @@ class GeneratorWriteLog extends Model
      */
     public function generator(): BelongsTo
     {
-        return $this->belongsTo(Generator::class);
+        return $this->belongsTo(Generator::class, 'generator_id', 'generator_id');
     }
 
     public function scopeLatest($query, $limit = 20)

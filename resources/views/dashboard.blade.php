@@ -149,7 +149,7 @@
                                             <option value="">Select Generator</option>
                                             @foreach($generators as $generator)
                                                 <option value="{{ $generator->generator_id }}" {{ $generatorStatus && $generatorStatus->generator_id == $generator->generator_id ? 'selected' : '' }}>
-                                                    {{ $generator->name }} ({{ $generator->generator_id }})
+                                                    {{ $generator->sitename }} ({{ $generator->generator_id }}) @if($generator->kva_power) - {{ $generator->kva_power }}kVA @endif
                                                 </option>
                                             @endforeach
                                         </select>
@@ -208,7 +208,7 @@
                             <select class="form-select form-control-modern" id="generatorFilter" style="width: auto;">
                                 <option value="">All Generators</option>
                                 @foreach($generators as $generator)
-                                    <option value="{{ $generator->generator_id }}">{{ $generator->name ?: 'Generator ' . $generator->generator_id }}</option>
+                                    <option value="{{ $generator->generator_id }}">{{ $generator->sitename ?: 'Generator ' . $generator->generator_id }} @if($generator->kva_power) - {{ $generator->kva_power }}kVA @endif</option>
                                 @endforeach
                             </select>
                             <select class="form-select form-control-modern" id="clientFilter" style="width: auto;">
@@ -227,13 +227,10 @@
                             <div class="generator-control-card p-3 rounded" style="background: var(--glass-bg); border: 1px solid rgba(255,255,255,0.1); transition: all 0.3s ease;">
                                 <div class="d-flex justify-content-between align-items-center mb-2">
                                     <div>
-                                        <h6 class="mb-0 text-white">{{ $generator->name ?: 'Generator ' . $generator->generator_id }}</h6>
-                                        <small class="text-white-50">{{ $generator->generator_id }}</small>
-                                        @if($generator->kva_power)
-                                            <div class="mt-1">
-                                                <span class="badge badge-info-modern badge-modern">{{ $generator->kva_power }}</span>
-                                            </div>
-                                        @endif
+                                        <h6 class="mb-0 text-white">{{ $generator->sitename ?: 'Generator ' . $generator->generator_id }} {{ $generator->generator_id }}</h6>
+                                        <div class="mt-1">
+                                            <span class="badge badge-info-modern badge-modern">{{ $generator->kva_power ? $generator->kva_power . 'kVA' : 'N/A' }}</span>
+                                        </div>
                                     </div>
                                     <div class="power-status-indicator" id="status-{{ $generator->generator_id }}">
                                         <i class="fas fa-circle text-secondary"></i>
@@ -260,56 +257,63 @@
         </div>
     </div>
 
-    <!-- Runtime Tracking Section -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card card-modern animate-fadeInUp" style="animation-delay: 0.5s;">
+
+    <!-- Charts and Data Tables -->
+    <div class="row">
+        <!-- Generator Runtime Tracking -->
+        <div class="col-lg-8 mb-4">
+            <div class="card card-modern animate-fadeInUp" style="animation-delay: 0.6s;">
                 <div class="card-header border-0 bg-transparent">
                     <div class="d-flex justify-content-between align-items-center">
                         <h5 class="mb-0 text-white">
                             <i class="fas fa-clock me-2"></i>
                             Generator Runtime Tracking
                         </h5>
-                        <div class="d-flex gap-2">
-                            <button class="btn btn-sm btn-outline-light" onclick="refreshRuntimeData()">
-                                <i class="fas fa-sync-alt me-1"></i>Refresh
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div class="row" id="runtimeTrackingCards">
-                        <!-- Runtime cards will be loaded here -->
-                        <div class="col-12 text-center py-4">
-                            <i class="fas fa-spinner fa-spin fa-2x text-muted"></i>
-                            <p class="text-muted mt-2">Loading runtime data...</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Charts and Data Tables -->
-    <div class="row">
-        <!-- Real-time Chart -->
-        <div class="col-lg-8 mb-4">
-            <div class="card card-modern animate-fadeInUp" style="animation-delay: 0.6s;">
-                <div class="card-header border-0 bg-transparent">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0 text-white">
-                            <i class="fas fa-chart-area me-2"></i>
-                            Real-time Performance
-                        </h5>
                         <div class="btn-group" role="group">
-                            <button type="button" class="btn btn-sm btn-outline-light active" data-period="1h">1H</button>
-                            <button type="button" class="btn btn-sm btn-outline-light" data-period="6h">6H</button>
-                            <button type="button" class="btn btn-sm btn-outline-light" data-period="24h">24H</button>
+                            <button type="button" class="btn btn-sm btn-outline-light active" data-period="today">Today</button>
+                            <button type="button" class="btn btn-sm btn-outline-light" data-period="week">Week</button>
+                            <button type="button" class="btn btn-sm btn-outline-light" data-period="month">Month</button>
                         </div>
                     </div>
                 </div>
                 <div class="card-body">
-                    <canvas id="performanceChart" height="300"></canvas>
+                    <div class="runtime-tracking-content">
+                        <div class="row g-3">
+                            @foreach($generators as $generator)
+                            <div class="col-md-6 col-lg-4 mb-3">
+                                <div class="runtime-card p-3 rounded" style="background: var(--glass-bg); border: 1px solid rgba(255,255,255,0.1);">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <div>
+                                            <h6 class="mb-0 text-white">{{ $generator->sitename ?: 'Generator ' . $generator->generator_id }} {{ $generator->generator_id }}</h6>
+                                            <div class="mt-1">
+                                                <span class="badge badge-info-modern badge-modern">{{ $generator->kva_power ? $generator->kva_power . 'kVA' : 'N/A' }}</span>
+                                            </div>
+                                        </div>
+                                        <span class="badge badge-success-modern">Active</span>
+                                    </div>
+                                    <div class="runtime-stats">
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <small class="text-white-50">Current Runtime:</small>
+                                            <small class="text-white">2h 45m</small>
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <small class="text-white-50">Today:</small>
+                                            <small class="text-white">8h 30m</small>
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <small class="text-white-50">This Week:</small>
+                                            <small class="text-white">45h 15m</small>
+                                        </div>
+                                        <div class="d-flex justify-content-between">
+                                            <small class="text-white-50">This Month:</small>
+                                            <small class="text-white">180h 45m</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            @endforeach
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -374,7 +378,7 @@
                             <select class="form-select form-control-modern" id="logGeneratorFilter" style="width: auto;">
                                 <option value="">All Generators</option>
                                 @foreach($generators as $generator)
-                                    <option value="{{ $generator->generator_id }}">{{ $generator->name }}</option>
+                                    <option value="{{ $generator->generator_id }}">{{ $generator->sitename }} @if($generator->kva_power) - {{ $generator->kva_power }}kVA @endif</option>
                                 @endforeach
                             </select>
                             <select class="form-select form-control-modern" id="logSitenameFilter" style="width: auto;">
@@ -443,7 +447,7 @@
                             <select class="form-select form-control-modern" id="writeLogGeneratorFilter" style="width: auto;">
                                 <option value="">All Generators</option>
                                 @foreach($generators as $generator)
-                                    <option value="{{ $generator->generator_id }}">{{ $generator->name }}</option>
+                                    <option value="{{ $generator->generator_id }}">{{ $generator->sitename }} @if($generator->kva_power) - {{ $generator->kva_power }}kVA @endif</option>
                                 @endforeach
                             </select>
                             <select class="form-select form-control-modern" id="writeLogSitenameFilter" style="width: auto;">

@@ -55,7 +55,7 @@
                             <select class="form-select form-control-modern" id="clientFilter">
                                 <option value="">All Clients</option>
                                 @foreach($clients as $client)
-                                    <option value="{{ $client->id }}">{{ $client->display_name ?? $client->client_id }}</option>
+                                    <option value="{{ $client->id }}" {{ request('client_id') == $client->id ? 'selected' : '' }}>{{ $client->display_name ?? $client->client_id }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -64,7 +64,7 @@
                             <select class="form-select form-control-modern" id="generatorFilter">
                                 <option value="">All Generators</option>
                                 @foreach($generators as $generator)
-                                    <option value="{{ $generator->generator_id }}">{{ $generator->name }} ({{ $generator->generator_id }})</option>
+                                    <option value="{{ $generator->generator_id }}" {{ request('generator_id') == $generator->generator_id ? 'selected' : '' }}>{{ $generator->sitename }} ({{ $generator->generator_id }}) @if($generator->kva_power) - {{ $generator->kva_power }}kVA @endif</option>
                                 @endforeach
                             </select>
                         </div>
@@ -73,20 +73,20 @@
                             <select class="form-select form-control-modern" id="sitenameFilter">
                                 <option value="">All Sites</option>
                                 @foreach($generators->filter(function($g) { return !empty($g->sitename); })->unique('sitename') as $generator)
-                                    <option value="{{ $generator->sitename }}">{{ $generator->sitename }}</option>
+                                    <option value="{{ $generator->sitename }}" {{ request('sitename') == $generator->sitename ? 'selected' : '' }}>{{ $generator->sitename }}</option>
                                 @endforeach
                             </select>
                         </div>
                         <div class="col-md-3">
                             <label class="form-label text-white-50">Date Range</label>
-                            <input type="date" class="form-control form-control-modern" id="dateFilter" value="{{ date('Y-m-d') }}">
+                            <input type="date" class="form-control form-control-modern" id="dateFilter" value="{{ request('date', date('Y-m-d')) }}">
                         </div>
                         <div class="col-md-3">
                             <label class="form-label text-white-50">Status</label>
                             <select class="form-select form-control-modern" id="statusFilter">
                                 <option value="">All Status</option>
-                                <option value="running">Running</option>
-                                <option value="stopped">Stopped</option>
+                                <option value="running" {{ request('status') == 'running' ? 'selected' : '' }}>Running</option>
+                                <option value="stopped" {{ request('status') == 'stopped' ? 'selected' : '' }}>Stopped</option>
                             </select>
                         </div>
                     </div>
@@ -132,29 +132,236 @@
                         <table class="table table-modern" id="logsTable">
                             <thead class="table-dark">
                                 <tr>
-                                    <th>Timestamp</th>
-                                    <th>Client</th>
-                                    <th>Generator ID</th>
-                                    <th>Site Name</th>
-                                    <th>Power Status</th>
-                                    <th>Fuel Level</th>
-                                    <th>Battery Voltage</th>
-                                    <th>Line Voltage 1</th>
-                                    <th>Line Voltage 2</th>
-                                    <th>Line Voltage 3</th>
-                                    <th>Line Current 1</th>
-                                    <th>Line Current 2</th>
-                                    <th>Line Current 3</th>
-                                    <th>Frequency 1</th>
-                                    <th>Frequency 2</th>
-                                    <th>Frequency 3</th>
-                                    <th>Power Factor 1</th>
-                                    <th>Power Factor 2</th>
-                                    <th>Power Factor 3</th>
-                                    <th>KVA 1</th>
-                                    <th>KVA 2</th>
-                                    <th>KVA 3</th>
-                                    <th>Generator Status</th>
+                                    <th>
+                                        <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'log_timestamp', 'sort_direction' => request('sort_by') == 'log_timestamp' && request('sort_direction') == 'asc' ? 'desc' : 'asc']) }}" class="text-white text-decoration-none">
+                                            Timestamp
+                                            @if(request('sort_by') == 'log_timestamp')
+                                                <i class="fas fa-sort-{{ request('sort_direction') == 'asc' ? 'up' : 'down' }} ms-1"></i>
+                                            @else
+                                                <i class="fas fa-sort ms-1 text-muted"></i>
+                                            @endif
+                                        </a>
+                                    </th>
+                                    <th>
+                                        <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'client_id', 'sort_direction' => request('sort_by') == 'client_id' && request('sort_direction') == 'asc' ? 'desc' : 'asc']) }}" class="text-white text-decoration-none">
+                                            Client
+                                            @if(request('sort_by') == 'client_id')
+                                                <i class="fas fa-sort-{{ request('sort_direction') == 'asc' ? 'up' : 'down' }} ms-1"></i>
+                                            @else
+                                                <i class="fas fa-sort ms-1 text-muted"></i>
+                                            @endif
+                                        </a>
+                                    </th>
+                                    <th>
+                                        <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'generator_id', 'sort_direction' => request('sort_by') == 'generator_id' && request('sort_direction') == 'asc' ? 'desc' : 'asc']) }}" class="text-white text-decoration-none">
+                                            Generator ID
+                                            @if(request('sort_by') == 'generator_id')
+                                                <i class="fas fa-sort-{{ request('sort_direction') == 'asc' ? 'up' : 'down' }} ms-1"></i>
+                                            @else
+                                                <i class="fas fa-sort ms-1 text-muted"></i>
+                                            @endif
+                                        </a>
+                                    </th>
+                                    <th>
+                                        <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'sitename', 'sort_direction' => request('sort_by') == 'sitename' && request('sort_direction') == 'asc' ? 'desc' : 'asc']) }}" class="text-white text-decoration-none">
+                                            Site Name
+                                            @if(request('sort_by') == 'sitename')
+                                                <i class="fas fa-sort-{{ request('sort_direction') == 'asc' ? 'up' : 'down' }} ms-1"></i>
+                                            @else
+                                                <i class="fas fa-sort ms-1 text-muted"></i>
+                                            @endif
+                                        </a>
+                                    </th>
+                                    <th>
+                                        <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'PS', 'sort_direction' => request('sort_by') == 'PS' && request('sort_direction') == 'asc' ? 'desc' : 'asc']) }}" class="text-white text-decoration-none">
+                                            Power Status
+                                            @if(request('sort_by') == 'PS')
+                                                <i class="fas fa-sort-{{ request('sort_direction') == 'asc' ? 'up' : 'down' }} ms-1"></i>
+                                            @else
+                                                <i class="fas fa-sort ms-1 text-muted"></i>
+                                            @endif
+                                        </a>
+                                    </th>
+                                    <th>
+                                        <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'FL', 'sort_direction' => request('sort_by') == 'FL' && request('sort_direction') == 'asc' ? 'desc' : 'asc']) }}" class="text-white text-decoration-none">
+                                            Fuel Level
+                                            @if(request('sort_by') == 'FL')
+                                                <i class="fas fa-sort-{{ request('sort_direction') == 'asc' ? 'up' : 'down' }} ms-1"></i>
+                                            @else
+                                                <i class="fas fa-sort ms-1 text-muted"></i>
+                                            @endif
+                                        </a>
+                                    </th>
+                                    <th>
+                                        <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'BV', 'sort_direction' => request('sort_by') == 'BV' && request('sort_direction') == 'asc' ? 'desc' : 'asc']) }}" class="text-white text-decoration-none">
+                                            Battery Voltage
+                                            @if(request('sort_by') == 'BV')
+                                                <i class="fas fa-sort-{{ request('sort_direction') == 'asc' ? 'up' : 'down' }} ms-1"></i>
+                                            @else
+                                                <i class="fas fa-sort ms-1 text-muted"></i>
+                                            @endif
+                                        </a>
+                                    </th>
+                                    <th>
+                                        <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'LV1', 'sort_direction' => request('sort_by') == 'LV1' && request('sort_direction') == 'asc' ? 'desc' : 'asc']) }}" class="text-white text-decoration-none">
+                                            Line Voltage 1
+                                            @if(request('sort_by') == 'LV1')
+                                                <i class="fas fa-sort-{{ request('sort_direction') == 'asc' ? 'up' : 'down' }} ms-1"></i>
+                                            @else
+                                                <i class="fas fa-sort ms-1 text-muted"></i>
+                                            @endif
+                                        </a>
+                                    </th>
+                                    <th>
+                                        <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'LV2', 'sort_direction' => request('sort_by') == 'LV2' && request('sort_direction') == 'asc' ? 'desc' : 'asc']) }}" class="text-white text-decoration-none">
+                                            Line Voltage 2
+                                            @if(request('sort_by') == 'LV2')
+                                                <i class="fas fa-sort-{{ request('sort_direction') == 'asc' ? 'up' : 'down' }} ms-1"></i>
+                                            @else
+                                                <i class="fas fa-sort ms-1 text-muted"></i>
+                                            @endif
+                                        </a>
+                                    </th>
+                                    <th>
+                                        <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'LV3', 'sort_direction' => request('sort_by') == 'LV3' && request('sort_direction') == 'asc' ? 'desc' : 'asc']) }}" class="text-white text-decoration-none">
+                                            Line Voltage 3
+                                            @if(request('sort_by') == 'LV3')
+                                                <i class="fas fa-sort-{{ request('sort_direction') == 'asc' ? 'up' : 'down' }} ms-1"></i>
+                                            @else
+                                                <i class="fas fa-sort ms-1 text-muted"></i>
+                                            @endif
+                                        </a>
+                                    </th>
+                                    <th>
+                                        <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'LI1', 'sort_direction' => request('sort_by') == 'LI1' && request('sort_direction') == 'asc' ? 'desc' : 'asc']) }}" class="text-white text-decoration-none">
+                                            Line Current 1
+                                            @if(request('sort_by') == 'LI1')
+                                                <i class="fas fa-sort-{{ request('sort_direction') == 'asc' ? 'up' : 'down' }} ms-1"></i>
+                                            @else
+                                                <i class="fas fa-sort ms-1 text-muted"></i>
+                                            @endif
+                                        </a>
+                                    </th>
+                                    <th>
+                                        <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'LI2', 'sort_direction' => request('sort_by') == 'LI2' && request('sort_direction') == 'asc' ? 'desc' : 'asc']) }}" class="text-white text-decoration-none">
+                                            Line Current 2
+                                            @if(request('sort_by') == 'LI2')
+                                                <i class="fas fa-sort-{{ request('sort_direction') == 'asc' ? 'up' : 'down' }} ms-1"></i>
+                                            @else
+                                                <i class="fas fa-sort ms-1 text-muted"></i>
+                                            @endif
+                                        </a>
+                                    </th>
+                                    <th>
+                                        <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'LI3', 'sort_direction' => request('sort_by') == 'LI3' && request('sort_direction') == 'asc' ? 'desc' : 'asc']) }}" class="text-white text-decoration-none">
+                                            Line Current 3
+                                            @if(request('sort_by') == 'LI3')
+                                                <i class="fas fa-sort-{{ request('sort_direction') == 'asc' ? 'up' : 'down' }} ms-1"></i>
+                                            @else
+                                                <i class="fas fa-sort ms-1 text-muted"></i>
+                                            @endif
+                                        </a>
+                                    </th>
+                                    <th>
+                                        <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'Lf1', 'sort_direction' => request('sort_by') == 'Lf1' && request('sort_direction') == 'asc' ? 'desc' : 'asc']) }}" class="text-white text-decoration-none">
+                                            Frequency 1
+                                            @if(request('sort_by') == 'Lf1')
+                                                <i class="fas fa-sort-{{ request('sort_direction') == 'asc' ? 'up' : 'down' }} ms-1"></i>
+                                            @else
+                                                <i class="fas fa-sort ms-1 text-muted"></i>
+                                            @endif
+                                        </a>
+                                    </th>
+                                    <th>
+                                        <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'Lf2', 'sort_direction' => request('sort_by') == 'Lf2' && request('sort_direction') == 'asc' ? 'desc' : 'asc']) }}" class="text-white text-decoration-none">
+                                            Frequency 2
+                                            @if(request('sort_by') == 'Lf2')
+                                                <i class="fas fa-sort-{{ request('sort_direction') == 'asc' ? 'up' : 'down' }} ms-1"></i>
+                                            @else
+                                                <i class="fas fa-sort ms-1 text-muted"></i>
+                                            @endif
+                                        </a>
+                                    </th>
+                                    <th>
+                                        <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'Lf3', 'sort_direction' => request('sort_by') == 'Lf3' && request('sort_direction') == 'asc' ? 'desc' : 'asc']) }}" class="text-white text-decoration-none">
+                                            Frequency 3
+                                            @if(request('sort_by') == 'Lf3')
+                                                <i class="fas fa-sort-{{ request('sort_direction') == 'asc' ? 'up' : 'down' }} ms-1"></i>
+                                            @else
+                                                <i class="fas fa-sort ms-1 text-muted"></i>
+                                            @endif
+                                        </a>
+                                    </th>
+                                    <th>
+                                        <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'Lpf1', 'sort_direction' => request('sort_by') == 'Lpf1' && request('sort_direction') == 'asc' ? 'desc' : 'asc']) }}" class="text-white text-decoration-none">
+                                            Power Factor 1
+                                            @if(request('sort_by') == 'Lpf1')
+                                                <i class="fas fa-sort-{{ request('sort_direction') == 'asc' ? 'up' : 'down' }} ms-1"></i>
+                                            @else
+                                                <i class="fas fa-sort ms-1 text-muted"></i>
+                                            @endif
+                                        </a>
+                                    </th>
+                                    <th>
+                                        <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'Lpf2', 'sort_direction' => request('sort_by') == 'Lpf2' && request('sort_direction') == 'asc' ? 'desc' : 'asc']) }}" class="text-white text-decoration-none">
+                                            Power Factor 2
+                                            @if(request('sort_by') == 'Lpf2')
+                                                <i class="fas fa-sort-{{ request('sort_direction') == 'asc' ? 'up' : 'down' }} ms-1"></i>
+                                            @else
+                                                <i class="fas fa-sort ms-1 text-muted"></i>
+                                            @endif
+                                        </a>
+                                    </th>
+                                    <th>
+                                        <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'Lpf3', 'sort_direction' => request('sort_by') == 'Lpf3' && request('sort_direction') == 'asc' ? 'desc' : 'asc']) }}" class="text-white text-decoration-none">
+                                            Power Factor 3
+                                            @if(request('sort_by') == 'Lpf3')
+                                                <i class="fas fa-sort-{{ request('sort_direction') == 'asc' ? 'up' : 'down' }} ms-1"></i>
+                                            @else
+                                                <i class="fas fa-sort ms-1 text-muted"></i>
+                                            @endif
+                                        </a>
+                                    </th>
+                                    <th>
+                                        <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'Lkva1', 'sort_direction' => request('sort_by') == 'Lkva1' && request('sort_direction') == 'asc' ? 'desc' : 'asc']) }}" class="text-white text-decoration-none">
+                                            KVA 1
+                                            @if(request('sort_by') == 'Lkva1')
+                                                <i class="fas fa-sort-{{ request('sort_direction') == 'asc' ? 'up' : 'down' }} ms-1"></i>
+                                            @else
+                                                <i class="fas fa-sort ms-1 text-muted"></i>
+                                            @endif
+                                        </a>
+                                    </th>
+                                    <th>
+                                        <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'Lkva2', 'sort_direction' => request('sort_by') == 'Lkva2' && request('sort_direction') == 'asc' ? 'desc' : 'asc']) }}" class="text-white text-decoration-none">
+                                            KVA 2
+                                            @if(request('sort_by') == 'Lkva2')
+                                                <i class="fas fa-sort-{{ request('sort_direction') == 'asc' ? 'up' : 'down' }} ms-1"></i>
+                                            @else
+                                                <i class="fas fa-sort ms-1 text-muted"></i>
+                                            @endif
+                                        </a>
+                                    </th>
+                                    <th>
+                                        <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'Lkva3', 'sort_direction' => request('sort_by') == 'Lkva3' && request('sort_direction') == 'asc' ? 'desc' : 'asc']) }}" class="text-white text-decoration-none">
+                                            KVA 3
+                                            @if(request('sort_by') == 'Lkva3')
+                                                <i class="fas fa-sort-{{ request('sort_direction') == 'asc' ? 'up' : 'down' }} ms-1"></i>
+                                            @else
+                                                <i class="fas fa-sort ms-1 text-muted"></i>
+                                            @endif
+                                        </a>
+                                    </th>
+                                    <th>
+                                        <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'GS', 'sort_direction' => request('sort_by') == 'GS' && request('sort_direction') == 'asc' ? 'desc' : 'asc']) }}" class="text-white text-decoration-none">
+                                            Generator Status
+                                            @if(request('sort_by') == 'GS')
+                                                <i class="fas fa-sort-{{ request('sort_direction') == 'asc' ? 'up' : 'down' }} ms-1"></i>
+                                            @else
+                                                <i class="fas fa-sort ms-1 text-muted"></i>
+                                            @endif
+                                        </a>
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -170,7 +377,7 @@
                                             <span class="badge badge-info-modern badge-modern">{{ $log->generator->generator_id ?? $log->generator_id_old ?? $log->generator_id }}</span>
                                         </td>
                                         <td>
-                                            <span class="badge badge-warning-modern badge-modern">{{ $log->sitename ?? $log->generator->sitename ?? 'N/A' }}</span>
+                                            <span class="badge badge-warning-modern badge-modern">{{ $log->generator->sitename ?? $log->sitename ?? 'N/A' }}</span>
                                         </td>
                                         <td>
                                             @if($log->PS)

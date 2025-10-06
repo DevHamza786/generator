@@ -15,7 +15,6 @@ class Generator extends Model
         'kva_power',
         'sitename',
         'description',
-        'location',
         'is_active'
     ];
 
