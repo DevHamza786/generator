@@ -239,7 +239,10 @@
                             $powerClass = $powerStatus ? 'power-on' : 'power-off';
                         @endphp
                         <div class="col-lg-4 col-md-6 mb-3 generator-item" data-client-id="{{ $generator->client_id }}">
-                            <div class="generator-control-card p-3 rounded {{ $statusClass }}" style="background: var(--glass-bg); border: 1px solid rgba(255,255,255,0.1); transition: all 0.3s ease;">
+                            <div class="generator-control-card p-3 rounded {{ $statusClass }}"
+                                 style="background: var(--glass-bg); border: 1px solid rgba(255,255,255,0.1); transition: all 0.3s ease; cursor: pointer;"
+                                 onclick="viewGeneratorLogs('{{ $generator->generator_id }}')"
+                                 title="Click to view generator logs">
                                 <div class="d-flex justify-content-between align-items-center mb-2">
                                     <div>
                                         <h6 class="mb-0 text-white">{{ $generator->sitename ?: 'Generator ' . $generator->generator_id }} {{ $generator->generator_id }}</h6>
@@ -254,9 +257,10 @@
                                         <i class="fas fa-circle {{ $powerStatus ? 'text-success' : 'text-danger' }}"></i>
                                     </div>
                                 </div>
-                                <div class="d-flex justify-content-between align-items-center">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
                                     <small class="text-white-50">{{ $generator->client->display_name ?? 'Unknown Client' }}</small>
-                                    <div class="power-toggle-switch">
+                                    <div class="d-flex align-items-center">
+                                        <div class="power-toggle-switch">
                                         <label class="switch">
                                             <input type="checkbox"
                                                    class="power-toggle"
@@ -266,11 +270,13 @@
                                                    {{ !$isActive ? 'disabled' : '' }}>
                                             <span class="slider round"></span>
                                         </label>
-                                        <small class="text-white-50 d-block mt-1">
+                                        <small class="text-white-50 d-block mt-1" id="power-text-{{ $generator->generator_id }}">
                                             {{ $powerStatus ? 'POWER ON' : 'POWER OFF' }}
                                         </small>
+                                        </div>
                                     </div>
                                 </div>
+
                             </div>
                         </div>
                         @endforeach
@@ -281,7 +287,7 @@
     </div>
 
 
-    <!-- Charts and Data Tables -->
+    <!-- Data Tables -->
     <div class="row">
         <!-- Generator Runtime Tracking -->
         <div class="col-lg-8 mb-4">
@@ -500,6 +506,7 @@
             </div>
         </div>
     </div>
+
 @endsection
 
 @section('styles')
@@ -731,166 +738,32 @@ select.form-select {
     line-height: 1;
     vertical-align: middle;
 }
+
+/* Generator Card Clickable Styles */
+.generator-control-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+    border-color: rgba(255,255,255,0.2) !important;
+}
+
+.generator-control-card:active {
+    transform: translateY(0);
+}
+
+/* Prevent power toggle from triggering card click */
+.power-toggle-switch {
+    pointer-events: auto;
+}
+
+.power-toggle-switch * {
+    pointer-events: auto;
+}
+
 </style>
 @endsection
 
 @section('scripts')
     <script>
-    // Chart.js configuration
-    let performanceChart;
-
-    function initChart() {
-        try {
-            const ctx = document.getElementById('performanceChart');
-            if (!ctx) {
-                console.error('Chart canvas element not found');
-                return;
-            }
-
-            if (typeof Chart === 'undefined') {
-                console.error('Chart.js is not loaded');
-                return;
-            }
-
-            // Get current theme
-            const isDarkTheme = document.documentElement.getAttribute('data-bs-theme') === 'dark';
-            const textColor = isDarkTheme ? 'rgba(255, 255, 255, 0.9)' : 'rgba(30, 30, 44, 0.8)';
-            const gridColor = isDarkTheme ? 'rgba(255, 255, 255, 0.1)' : 'rgba(30, 30, 44, 0.1)';
-            const tickColor = isDarkTheme ? 'rgba(255, 255, 255, 0.7)' : 'rgba(30, 30, 44, 0.6)';
-
-            performanceChart = new Chart(ctx.getContext('2d'), {
-            type: 'line',
-            data: {
-                labels: [],
-                datasets: [{
-                    label: 'Fuel Level (%)',
-                    data: [],
-                    borderColor: '#34B1AA',
-                    backgroundColor: 'rgba(52, 177, 170, 0.3)',
-                    tension: 0.4,
-                    fill: true,
-                    borderWidth: 2
-                }, {
-                    label: 'Battery Voltage (V)',
-                    data: [],
-                    borderColor: '#F29F67',
-                    backgroundColor: 'rgba(242, 159, 103, 0.3)',
-                    tension: 0.4,
-                    fill: true,
-                    borderWidth: 2
-                }, {
-                    label: 'Line Voltage (V)',
-                    data: [],
-                    borderColor: '#3B8FF3',
-                    backgroundColor: 'rgba(59, 143, 243, 0.3)',
-                    tension: 0.4,
-                    fill: true,
-                    borderWidth: 2
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        labels: {
-                            color: textColor,
-                            font: {
-                                weight: '500'
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    x: {
-                        ticks: {
-                            color: tickColor,
-                            font: {
-                                size: 11
-                            }
-                        },
-                        grid: {
-                            color: gridColor,
-                            drawBorder: false
-                        },
-                        border: {
-                            display: false
-                        }
-                    },
-                    y: {
-                        ticks: {
-                            color: tickColor,
-                            font: {
-                                size: 11
-                            }
-                        },
-                        grid: {
-                            color: gridColor,
-                            drawBorder: false
-                        },
-                        border: {
-                            display: false
-                        }
-                    }
-                },
-                interaction: {
-                    intersect: false,
-                    mode: 'index'
-                },
-                elements: {
-                    point: {
-                        radius: 4,
-                        hoverRadius: 6,
-                        borderWidth: 2
-                    }
-                }
-            }
-        });
-        } catch (error) {
-            console.error('Error initializing chart:', error);
-        }
-    }
-
-    function updateChart(data) {
-        if (!performanceChart) return;
-
-        const now = new Date();
-        const timeLabel = now.toLocaleTimeString();
-
-        // Add new data point
-        performanceChart.data.labels.push(timeLabel);
-        performanceChart.data.datasets[0].data.push(data.FL || 0);
-        performanceChart.data.datasets[1].data.push(data.BV || 0);
-        performanceChart.data.datasets[2].data.push(data.LV1 || 0);
-
-        // Keep only last 20 data points
-        if (performanceChart.data.labels.length > 20) {
-            performanceChart.data.labels.shift();
-            performanceChart.data.datasets.forEach(dataset => {
-                dataset.data.shift();
-            });
-        }
-
-        performanceChart.update('none');
-    }
-
-    function updateChartTheme() {
-        if (!performanceChart) return;
-
-        const isDarkTheme = document.documentElement.getAttribute('data-bs-theme') === 'dark';
-        const textColor = isDarkTheme ? 'rgba(255, 255, 255, 0.9)' : 'rgba(30, 30, 44, 0.8)';
-        const gridColor = isDarkTheme ? 'rgba(255, 255, 255, 0.1)' : 'rgba(30, 30, 44, 0.1)';
-        const tickColor = isDarkTheme ? 'rgba(255, 255, 255, 0.7)' : 'rgba(30, 30, 44, 0.6)';
-
-        // Update chart colors
-        performanceChart.options.plugins.legend.labels.color = textColor;
-        performanceChart.options.scales.x.ticks.color = tickColor;
-        performanceChart.options.scales.x.grid.color = gridColor;
-        performanceChart.options.scales.y.ticks.color = tickColor;
-        performanceChart.options.scales.y.grid.color = gridColor;
-
-        performanceChart.update();
-    }
 
     function updateLiveGeneratorIds(logsData) {
         // Group logs by generator_id to get the latest entry for each generator
@@ -1044,11 +917,6 @@ select.form-select {
 
                     // Update live generator IDs
                     updateLiveGeneratorIds(response.data);
-
-                    // Update chart with latest data
-                    if (response.data.length > 0) {
-                        updateChart(response.data[0]);
-                    }
                 }
             });
 
@@ -1081,34 +949,8 @@ select.form-select {
 
     // Initialize everything when document is ready
     $(document).ready(function() {
-        // Wait for Chart.js to be available
-        function waitForChart() {
-            if (typeof Chart !== 'undefined') {
-                console.log('Chart.js is available, initializing chart...');
-                initChart();
-                // Initial data load
-                refreshData();
-            } else {
-                console.log('Waiting for Chart.js...');
-                setTimeout(waitForChart, 100);
-            }
-        }
-
-        waitForChart();
-
-        // Listen for theme changes
-        const observer = new MutationObserver(function(mutations) {
-            mutations.forEach(function(mutation) {
-                if (mutation.type === 'attributes' && mutation.attributeName === 'data-bs-theme') {
-                    updateChartTheme();
-                }
-            });
-        });
-
-        observer.observe(document.documentElement, {
-            attributes: true,
-            attributeFilter: ['data-bs-theme']
-        });
+        // Initial data load
+        refreshData();
 
         // Update time every second (only time, no data refresh)
         setInterval(function() {
@@ -1159,6 +1001,16 @@ select.form-select {
             // Update power text
             const powerText = generatorCard.find('.power-toggle-switch small');
             powerText.text(powerStatus ? 'POWER ON' : 'POWER OFF');
+
+            // Check if this is a manual override (you might want to add this info to the API response)
+            // For now, we'll assume manual overrides are indicated by recent updates
+            if (status.is_manual_override) {
+                powerText.addClass('text-warning');
+                powerText.attr('title', 'Manual Override Active');
+            } else {
+                powerText.removeClass('text-warning');
+                powerText.removeAttr('title');
+            }
         });
     }
 
@@ -1216,6 +1068,11 @@ select.form-select {
     }
 
     function toggleGeneratorPower(generatorId, power) {
+        // Show loading state
+        const toggle = $('#toggle-' + generatorId);
+        const originalState = toggle.prop('checked');
+        toggle.prop('disabled', true);
+
         $.post('{{ route("dashboard.toggle-power") }}', {
             generator_id: generatorId,
             power: power,
@@ -1223,24 +1080,37 @@ select.form-select {
         }, function(response) {
             if (response.success) {
                 const statusIndicator = $('#status-' + generatorId);
+                const powerText = $('#power-text-' + generatorId);
 
                 if (power) {
                     statusIndicator.removeClass('offline').addClass('online');
+                    statusIndicator.find('i').removeClass('text-danger').addClass('text-success');
                 } else {
                     statusIndicator.removeClass('online').addClass('offline');
+                    statusIndicator.find('i').removeClass('text-success').addClass('text-danger');
                 }
+
+                // Update power text
+                powerText.text(power ? 'POWER ON' : 'POWER OFF');
+
+                // Add visual feedback for manual override
+                powerText.addClass('text-warning');
+                powerText.attr('title', 'Manual Override Active');
 
                 // Show success message
                 showNotification(response.message, 'success');
             } else {
                 showNotification(response.message || 'Failed to update power status', 'error');
                 // Revert toggle state
-                $('#toggle-' + generatorId).prop('checked', !power);
+                toggle.prop('checked', !power);
             }
         }).fail(function() {
             showNotification('Network error. Please try again.', 'error');
             // Revert toggle state
-            $('#toggle-' + generatorId).prop('checked', !power);
+            toggle.prop('checked', !power);
+        }).always(function() {
+            // Re-enable toggle
+            toggle.prop('disabled', false);
         });
     }
 
@@ -1269,11 +1139,17 @@ select.form-select {
         loadPowerStatus();
 
         // Handle power toggle clicks
-        $('.power-toggle').on('change', function() {
+        $('.power-toggle').on('change', function(e) {
+            e.stopPropagation(); // Prevent card click when toggling power
             const generatorId = $(this).data('generator-id');
             const power = $(this).is(':checked');
 
             toggleGeneratorPower(generatorId, power);
+        });
+
+        // Also prevent click events on the power toggle switch
+        $('.power-toggle-switch').on('click', function(e) {
+            e.stopPropagation(); // Prevent card click when clicking on power toggle area
         });
 
         // Generator filter functionality
@@ -1681,5 +1557,12 @@ console.error('Failed to load running generators');
             }
         }
     }
+
+    // Function to view generator logs
+    function viewGeneratorLogs(generatorId) {
+        // Redirect to write-logs page with generator_id filter
+        window.location.href = `{{ route('write-logs') }}?generator_id=${generatorId}`;
+    }
+
     </script>
 @endsection

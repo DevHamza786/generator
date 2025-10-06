@@ -22,12 +22,17 @@ class GeneratorRuntime extends Model
         'end_voltage_l2',
         'end_voltage_l3',
         'status',
+        'maintenance_status',
+        'maintenance_started_at',
+        'maintenance_completed_at',
         'notes',
     ];
 
     protected $casts = [
         'start_time' => 'datetime',
         'end_time' => 'datetime',
+        'maintenance_started_at' => 'datetime',
+        'maintenance_completed_at' => 'datetime',
         'start_voltage_l1' => 'decimal:2',
         'start_voltage_l2' => 'decimal:2',
         'start_voltage_l3' => 'decimal:2',
@@ -89,13 +94,18 @@ class GeneratorRuntime extends Model
      */
     public function getFormattedDurationAttribute()
     {
-        if (!$this->duration_seconds) {
+        // For running generators, calculate real-time duration
+        if ($this->status === 'running' && $this->start_time) {
+            $durationSeconds = $this->start_time->diffInSeconds(now());
+        } elseif ($this->duration_seconds) {
+            $durationSeconds = $this->duration_seconds;
+        } else {
             return 'N/A';
         }
 
-        $days = floor($this->duration_seconds / 86400);
-        $hours = floor(($this->duration_seconds % 86400) / 3600);
-        $minutes = floor(($this->duration_seconds % 3600) / 60);
+        $days = floor($durationSeconds / 86400);
+        $hours = floor(($durationSeconds % 86400) / 3600);
+        $minutes = floor(($durationSeconds % 3600) / 60);
 
         $result = '';
 
@@ -126,6 +136,7 @@ class GeneratorRuntime extends Model
     {
         return static::where('generator_id', $generatorId)
             ->where('status', 'running')
+            ->whereNull('end_time') // Only get records that don't have an end time
             ->latest('start_time')
             ->first();
     }
@@ -146,5 +157,74 @@ class GeneratorRuntime extends Model
         $this->save();
 
         return $this;
+    }
+
+    /**
+     * Get maintenance status badge class
+     */
+    public function getMaintenanceStatusBadgeClassAttribute()
+    {
+        return match($this->maintenance_status) {
+            'none' => 'badge-secondary',
+            'scheduled' => 'badge-info',
+            'overdue' => 'badge-danger',
+            'in_progress' => 'badge-warning',
+            'completed' => 'badge-success',
+            default => 'badge-secondary'
+        };
+    }
+
+    /**
+     * Get maintenance status text
+     */
+    public function getMaintenanceStatusTextAttribute()
+    {
+        return match($this->maintenance_status) {
+            'none' => 'No maintenance required',
+            'scheduled' => 'Maintenance scheduled',
+            'overdue' => 'Maintenance overdue',
+            'in_progress' => 'Maintenance in progress',
+            'completed' => 'Maintenance completed',
+            default => 'Unknown'
+        };
+    }
+
+    /**
+     * Get maintenance status icon
+     */
+    public function getMaintenanceStatusIconAttribute()
+    {
+        return match($this->maintenance_status) {
+            'none' => 'fas fa-check-circle text-success',
+            'scheduled' => 'fas fa-calendar-alt text-info',
+            'overdue' => 'fas fa-exclamation-triangle text-danger',
+            'in_progress' => 'fas fa-tools text-warning',
+            'completed' => 'fas fa-check-double text-success',
+            default => 'fas fa-question-circle text-secondary'
+        };
+    }
+
+    /**
+     * Scope for maintenance status
+     */
+    public function scopeMaintenanceStatus($query, $status)
+    {
+        return $query->where('maintenance_status', $status);
+    }
+
+    /**
+     * Scope for overdue maintenance
+     */
+    public function scopeOverdueMaintenance($query)
+    {
+        return $query->where('maintenance_status', 'overdue');
+    }
+
+    /**
+     * Scope for scheduled maintenance
+     */
+    public function scopeScheduledMaintenance($query)
+    {
+        return $query->where('maintenance_status', 'scheduled');
     }
 }

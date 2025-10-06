@@ -24,4 +24,11 @@ Route::middleware(['auth'])->group(function () {
     // Power control routes
     Route::post('/dashboard/toggle-power', [DashboardController::class, 'togglePower'])->name('dashboard.toggle-power');
     Route::post('/dashboard/power-status', [DashboardController::class, 'getPowerStatus'])->name('dashboard.power-status');
+
+    // Maintenance status routes
+    Route::post('/dashboard/maintenance-status', [DashboardController::class, 'updateMaintenanceStatus'])->name('dashboard.maintenance-status');
+    Route::get('/dashboard/maintenance-status', [DashboardController::class, 'getMaintenanceStatus'])->name('dashboard.get-maintenance-status');
+
+    // Runtime details routes
+    Route::get('/dashboard/runtime-details/{generatorId}', [DashboardController::class, 'getRuntimeDetails'])->name('dashboard.runtime-details');
 });
