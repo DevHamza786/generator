@@ -1,0 +1,122 @@
+# Laravel Scheduler Cron Job Setup for cPanel
+
+## 🕐 Automatic Daily Cleanup Setup
+
+### Step 1: Kernel.php File Created ✅
+The `app/Console/Kernel.php` file has been created with the auto cleanup scheduler.
+
+### Step 2: Set Up Cron Job in cPanel
+
+1. **Login to your cPanel**
+2. **Go to "Cron Jobs" section**
+3. **Add new cron job with these settings:**
+
+**Minute:** *
+**Hour:** *
+**Day:** *
+**Month:** *
+**Weekday:** *
+
+**Command:**
+```bash
+cd /home/username/public_html/your-project-folder && php artisan schedule:run >> /dev/null 2>&1
+```
+
+**Replace `username` and `your-project-folder` with your actual values.**
+
+### Step 3: Verify Setup
+
+The scheduler will now:
+- ✅ **Run every minute** to check for scheduled tasks
+- ✅ **Execute cleanup daily at 2:00 AM**
+- ✅ **Keep only latest 10 days** of data
+- ✅ **Log results** to `storage/logs/cleanup.log`
+- ✅ **Prevent overlapping** runs
+
+### Step 4: Test the Setup
+
+**Test the command manually first:**
+```bash
+php artisan cleanup:logs --days=10
+```
+
+**Check if scheduler is working:**
+```bash
+php artisan schedule:list
+```
+
+**View cleanup logs:**
+```bash
+tail -f storage/logs/cleanup.log
+```
+
+## 📊 What Happens Daily
+
+**Every day at 2:00 AM:**
+1. ✅ Checks all log tables
+2. ✅ Deletes data older than 10 days
+3. ✅ Keeps only latest 10 days
+4. ✅ Logs the cleanup process
+5. ✅ Sends email notification (if enabled)
+
+## 🔧 Customization Options
+
+### Change Cleanup Time
+Edit `app/Console/Kernel.php`:
+```php
+$schedule->command('cleanup:logs --days=10')
+         ->dailyAt('03:00')  // Change to 3:00 AM
+         ->withoutOverlapping();
+```
+
+### Change Days to Keep
+```php
+$schedule->command('cleanup:logs --days=7')  // Keep 7 days
+         ->dailyAt('02:00')
+         ->withoutOverlapping();
+```
+
+### Add Email Notifications
+Uncomment this line in `app/Console/Kernel.php`:
+```php
+->emailOutputTo('admin@yourdomain.com');
+```
+
+## 📋 Complete Setup Checklist
+
+- [x] ✅ `app/Console/Kernel.php` created with scheduler
+- [x] ✅ `app/Console/Commands/AutoCleanupCommand.php` created
+- [x] ✅ `database/seeders/AutoCleanupSeeder.php` created
+- [ ] ⏳ Set up cron job in cPanel
+- [ ] ⏳ Test manual command first
+- [ ] ⏳ Monitor first automatic run
+- [ ] ⏳ Check cleanup logs
+
+## 🚨 Important Notes
+
+1. **Test manually first** before setting up automatic
+2. **Backup database** before first run
+3. **Monitor logs** for first few days
+4. **Check disk space** - cleanup will free up space
+5. **Adjust timing** if needed (2 AM is usually good)
+
+## 📧 Email Notifications (Optional)
+
+To get email notifications when cleanup runs, uncomment this line in `app/Console/Kernel.php`:
+```php
+->emailOutputTo('admin@yourdomain.com');
+```
+
+## 🛡️ Safety Features
+
+- ✅ **Overlap protection** - prevents multiple runs
+- ✅ **Detailed logging** - all activities logged
+- ✅ **Error handling** - continues if some records fail
+- ✅ **Only affects logs** - other data remains safe
+- ✅ **Backup reminder** - always backup first
+
+---
+**Status:** ✅ Ready for automatic daily cleanup
+**Next Step:** Set up cron job in cPanel
+**Frequency:** Daily at 2:00 AM
+**Retention:** 10 days of data

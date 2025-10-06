@@ -39,6 +39,7 @@ $available_seeders = [
     'UpdateTimezoneSeeder' => 'Convert existing timestamps from UTC to Asia/Karachi',
     'FixTimezoneSeeder' => 'Fix timezone by adding 5 hours to all timestamps',
     'SqliteTimezoneFixSeeder' => 'SQLite-compatible timezone fix (recommended for cPanel)',
+    'AutoCleanupSeeder' => 'Auto cleanup - keep only latest 10 days of data',
     'DatabaseSeeder' => 'Run all seeders'
 ];
 

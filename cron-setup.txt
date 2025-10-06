@@ -1,0 +1,124 @@
+# Auto Cleanup Cron Job Setup for cPanel
+
+## 🕐 Automatic Daily Cleanup
+
+To set up automatic daily cleanup that runs every day at 2 AM:
+
+### Method 1: cPanel Cron Jobs
+1. Login to your cPanel
+2. Go to "Cron Jobs" section
+3. Add new cron job with these settings:
+
+**Minute:** 0
+**Hour:** 2
+**Day:** *
+**Month:** *
+**Weekday:** *
+
+**Command:**
+```bash
+cd /home/username/public_html/your-project-folder && php artisan cleanup:logs --days=10
+```
+
+### Method 2: Laravel Scheduler (Recommended)
+Add this to your `app/Console/Kernel.php` file:
+
+```php
+protected function schedule(Schedule $schedule)
+{
+    // Run cleanup every day at 2 AM
+    $schedule->command('cleanup:logs --days=10')
+             ->dailyAt('02:00')
+             ->withoutOverlapping();
+}
+```
+
+Then add this cron job in cPanel:
+```bash
+* * * * * cd /home/username/public_html/your-project-folder && php artisan schedule:run >> /dev/null 2>&1
+```
+
+### Method 3: Simple Daily Script
+Create a simple script that runs daily:
+
+**File:** `daily-cleanup.sh`
+```bash
+#!/bin/bash
+cd /home/username/public_html/your-project-folder
+php artisan cleanup:logs --days=10
+```
+
+**Cron Job:**
+```bash
+0 2 * * * /home/username/public_html/your-project-folder/daily-cleanup.sh
+```
+
+## 📊 What Happens Daily
+
+Every day at 2 AM:
+- ✅ Checks all log tables
+- ✅ Deletes data older than 10 days
+- ✅ Keeps only latest 10 days
+- ✅ Logs the cleanup process
+- ✅ Sends email notification (optional)
+
+## 🔧 Manual Commands
+
+### Run cleanup manually:
+```bash
+php artisan cleanup:logs --days=10
+```
+
+### Run with different days:
+```bash
+php artisan cleanup:logs --days=7    # Keep 7 days
+php artisan cleanup:logs --days=30   # Keep 30 days
+```
+
+### Run via seeder:
+```bash
+php artisan db:seed --class=AutoCleanupSeeder
+```
+
+## 📧 Email Notifications (Optional)
+
+To get email notifications when cleanup runs, modify the command:
+
+```php
+$schedule->command('cleanup:logs --days=10')
+         ->dailyAt('02:00')
+         ->emailOutputTo('admin@yourdomain.com')
+         ->withoutOverlapping();
+```
+
+## 🛡️ Safety Features
+
+- ✅ **Backup reminder** before running
+- ✅ **Dry run option** to see what would be deleted
+- ✅ **Logging** of all cleanup activities
+- ✅ **Error handling** if something goes wrong
+- ✅ **Overlap protection** prevents multiple runs
+
+## 📋 Setup Checklist
+
+- [ ] Upload `AutoCleanupSeeder.php` to `database/seeders/`
+- [ ] Upload `AutoCleanupCommand.php` to `app/Console/Commands/`
+- [ ] Upload `auto-cleanup.php` to `public/`
+- [ ] Set up cron job in cPanel
+- [ ] Test manual run first
+- [ ] Monitor first few automatic runs
+- [ ] Set up email notifications (optional)
+
+## 🚨 Important Notes
+
+1. **Always backup** before first run
+2. **Test manually** before setting up automatic
+3. **Monitor logs** for first few days
+4. **Adjust timing** if needed (2 AM is usually good)
+5. **Check disk space** - cleanup will free up space
+
+---
+**Status:** Ready for automatic daily cleanup
+**Frequency:** Daily at 2 AM
+**Retention:** 10 days of data
+**Safety:** Backup recommended before first run
