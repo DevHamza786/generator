@@ -26,6 +26,8 @@ Route::prefix('generator')->group(function () {
     Route::get('/status', [GeneratorController::class, 'status'])->name('api.generator.status');
     Route::get('/logs', [GeneratorController::class, 'logs'])->name('api.generator.logs');
     Route::get('/write-logs', [GeneratorController::class, 'writeLogs'])->name('api.generator.write-logs');
+    Route::get('/quick-stats', [GeneratorController::class, 'quickStats'])->name('api.generator.quick-stats');
+    Route::get('/runtime', [GeneratorController::class, 'getGeneratorRuntime'])->name('api.generator.runtime');
     Route::post('/save-logs', [GeneratorController::class, 'saveLogData'])->name('api.generator.save-logs');
     Route::post('/save-write-logs', [GeneratorController::class, 'saveWriteLogData'])->name('api.generator.save-write-logs');
 

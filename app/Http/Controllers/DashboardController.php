@@ -10,9 +10,17 @@ use App\Models\GeneratorRuntime;
 use App\Models\Client;
 use App\Models\Generator;
 use App\Services\RuntimeTrackingService;
+use App\Services\DeviceStatusService;
 
 class DashboardController extends Controller
 {
+    protected $deviceStatusService;
+
+    public function __construct(DeviceStatusService $deviceStatusService)
+    {
+        $this->deviceStatusService = $deviceStatusService;
+    }
+
     /**
      * Display the dashboard with generator monitoring data
      */
@@ -40,13 +48,35 @@ class DashboardController extends Controller
         $totalLogs = GeneratorLog::count();
         $totalWriteLogs = GeneratorWriteLog::count();
 
-        // Get running generators count
+        // Get active generators count based on recent data (1 minute threshold)
+        $activeGenerators = $this->deviceStatusService->getActiveGeneratorsCount(1);
+        
+        // Get running generators count (generators with GS=true in recent logs)
         $runningGenerators = GeneratorLog::where('GS', true)
+            ->where('log_timestamp', '>=', now()->subMinutes(5))
             ->distinct('generator_id')
             ->count();
 
-        // Get latest generator status
-        $generatorStatus = GeneratorStatus::latest()->first();
+        // Get all generator statuses
+        $generatorStatuses = $this->deviceStatusService->getAllGeneratorsStatus(1);
+
+        // Create a mock generator status for backward compatibility
+        $overallPower = false;
+        $lastUpdated = null;
+        
+        foreach ($generatorStatuses as $status) {
+            if ($status['is_active'] && $status['power_status']) {
+                $overallPower = true;
+            }
+            if ($status['last_data_time'] && (!$lastUpdated || $status['last_data_time'] > $lastUpdated)) {
+                $lastUpdated = $status['last_data_time'];
+            }
+        }
+
+        $generatorStatus = (object) [
+            'power' => $overallPower,
+            'last_updated' => $lastUpdated ?: now()
+        ];
 
         return view('dashboard', compact(
             'clients',
@@ -57,8 +87,10 @@ class DashboardController extends Controller
             'totalGenerators',
             'totalLogs',
             'totalWriteLogs',
+            'activeGenerators',
             'runningGenerators',
-            'generatorStatus'
+            'generatorStatus',
+            'generatorStatuses'
         ));
     }
 

@@ -19,6 +19,13 @@ class Kernel extends ConsoleKernel
                  ->withoutOverlapping()
                  ->appendOutputTo(storage_path('logs/cleanup.log'));
 
+        // Device status update - check and update generator statuses
+        // Runs every minute to ensure accurate status tracking
+        $schedule->command('device:update-status')
+                 ->everyMinute()
+                 ->withoutOverlapping()
+                 ->appendOutputTo(storage_path('logs/device-status.log'));
+
         // Optional: Add email notification for cleanup results
         // Uncomment the line below if you want email notifications
         // ->emailOutputTo('admin@yourdomain.com');

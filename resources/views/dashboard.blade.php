@@ -145,10 +145,10 @@
                                         {{ $generatorStatus && $generatorStatus->power ? 'OPERATIONAL' : 'OFFLINE' }}
                                     </h2>
                                     <div>
-                                        <select class="form-select form-control-modern" id="mainGeneratorFilter" style="width: auto; font-size: 0.9rem; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white;">
+                                        <select class="form-select form-control-modern" id="mainGeneratorFilter" style="width: auto; font-size: 0.9rem;">
                                             <option value="">Select Generator</option>
                                             @foreach($generators as $generator)
-                                                <option value="{{ $generator->generator_id }}" {{ $generatorStatus && $generatorStatus->generator_id == $generator->generator_id ? 'selected' : '' }}>
+                                                <option value="{{ $generator->generator_id }}">
                                                     {{ $generator->sitename }} ({{ $generator->generator_id }}) @if($generator->kva_power) - {{ $generator->kva_power }}kVA @endif
                                                 </option>
                                             @endforeach
@@ -223,17 +223,27 @@
                 <div class="card-body">
                     <div class="row" id="generatorPowerControls">
                         @foreach($generators as $generator)
+                        @php
+                            $generatorStatus = collect($generatorStatuses)->firstWhere('generator_id', $generator->generator_id);
+                            $isActive = $generatorStatus ? $generatorStatus['is_active'] : false;
+                            $powerStatus = $generatorStatus ? $generatorStatus['power_status'] : false;
+                            $statusClass = $isActive ? 'status-active' : 'status-inactive';
+                            $powerClass = $powerStatus ? 'power-on' : 'power-off';
+                        @endphp
                         <div class="col-lg-4 col-md-6 mb-3 generator-item" data-client-id="{{ $generator->client_id }}">
-                            <div class="generator-control-card p-3 rounded" style="background: var(--glass-bg); border: 1px solid rgba(255,255,255,0.1); transition: all 0.3s ease;">
+                            <div class="generator-control-card p-3 rounded {{ $statusClass }}" style="background: var(--glass-bg); border: 1px solid rgba(255,255,255,0.1); transition: all 0.3s ease;">
                                 <div class="d-flex justify-content-between align-items-center mb-2">
                                     <div>
                                         <h6 class="mb-0 text-white">{{ $generator->sitename ?: 'Generator ' . $generator->generator_id }} {{ $generator->generator_id }}</h6>
                                         <div class="mt-1">
                                             <span class="badge badge-info-modern badge-modern">{{ $generator->kva_power ? $generator->kva_power . 'kVA' : 'N/A' }}</span>
+                                            <span class="badge {{ $isActive ? 'badge-success' : 'badge-secondary' }} ms-1">
+                                                {{ $isActive ? 'ACTIVE' : 'INACTIVE' }}
+                                            </span>
                                         </div>
                                     </div>
-                                    <div class="power-status-indicator" id="status-{{ $generator->generator_id }}">
-                                        <i class="fas fa-circle text-secondary"></i>
+                                    <div class="power-status-indicator {{ $powerClass }}" id="status-{{ $generator->generator_id }}">
+                                        <i class="fas fa-circle {{ $powerStatus ? 'text-success' : 'text-danger' }}"></i>
                                     </div>
                                 </div>
                                 <div class="d-flex justify-content-between align-items-center">
@@ -243,9 +253,14 @@
                                             <input type="checkbox"
                                                    class="power-toggle"
                                                    data-generator-id="{{ $generator->generator_id }}"
-                                                   id="toggle-{{ $generator->generator_id }}">
+                                                   id="toggle-{{ $generator->generator_id }}"
+                                                   {{ $powerStatus ? 'checked' : '' }}
+                                                   {{ !$isActive ? 'disabled' : '' }}>
                                             <span class="slider round"></span>
                                         </label>
+                                        <small class="text-white-50 d-block mt-1">
+                                            {{ $powerStatus ? 'POWER ON' : 'POWER OFF' }}
+                                        </small>
                                     </div>
                                 </div>
                             </div>
@@ -269,49 +284,22 @@
                             <i class="fas fa-clock me-2"></i>
                             Generator Runtime Tracking
                         </h5>
-                        <div class="btn-group" role="group">
-                            <button type="button" class="btn btn-sm btn-outline-light active" data-period="today">Today</button>
-                            <button type="button" class="btn btn-sm btn-outline-light" data-period="week">Week</button>
-                            <button type="button" class="btn btn-sm btn-outline-light" data-period="month">Month</button>
+                        <div class="d-flex gap-2">
+                            <select class="form-select form-control-modern" id="runtimeGeneratorFilter" style="width: auto; font-size: 0.9rem;">
+                                <option value="">Select Generator</option>
+                                @foreach($generators as $generator)
+                                    <option value="{{ $generator->generator_id }}">{{ $generator->sitename ?: 'Generator ' . $generator->generator_id }} ({{ $generator->generator_id }})</option>
+                                @endforeach
+                            </select>
                         </div>
                     </div>
                 </div>
                 <div class="card-body">
-                    <div class="runtime-tracking-content">
-                        <div class="row g-3">
-                            @foreach($generators as $generator)
-                            <div class="col-md-6 col-lg-4 mb-3">
-                                <div class="runtime-card p-3 rounded" style="background: var(--glass-bg); border: 1px solid rgba(255,255,255,0.1);">
-                                    <div class="d-flex justify-content-between align-items-center mb-2">
-                                        <div>
-                                            <h6 class="mb-0 text-white">{{ $generator->sitename ?: 'Generator ' . $generator->generator_id }} {{ $generator->generator_id }}</h6>
-                                            <div class="mt-1">
-                                                <span class="badge badge-info-modern badge-modern">{{ $generator->kva_power ? $generator->kva_power . 'kVA' : 'N/A' }}</span>
-                                            </div>
-                                        </div>
-                                        <span class="badge badge-success-modern">Active</span>
-                                    </div>
-                                    <div class="runtime-stats">
-                                        <div class="d-flex justify-content-between mb-1">
-                                            <small class="text-white-50">Current Runtime:</small>
-                                            <small class="text-white">2h 45m</small>
-                                        </div>
-                                        <div class="d-flex justify-content-between mb-1">
-                                            <small class="text-white-50">Today:</small>
-                                            <small class="text-white">8h 30m</small>
-                                        </div>
-                                        <div class="d-flex justify-content-between mb-1">
-                                            <small class="text-white-50">This Week:</small>
-                                            <small class="text-white">45h 15m</small>
-                                        </div>
-                                        <div class="d-flex justify-content-between">
-                                            <small class="text-white-50">This Month:</small>
-                                            <small class="text-white">180h 45m</small>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            @endforeach
+                    <div class="runtime-tracking-content" id="runtimeTrackingContent">
+                        <div class="text-center py-5">
+                            <i class="fas fa-arrow-up fa-2x text-muted mb-3"></i>
+                            <h6 class="text-muted">Select a generator to view runtime data</h6>
+                            <p class="text-muted small">Choose a generator from the dropdown above to see detailed runtime statistics</p>
                         </div>
                     </div>
                 </div>
@@ -332,28 +320,28 @@
                         <div class="col-6">
                             <div class="text-center p-3 rounded" style="background: var(--glass-bg);">
                                 <i class="fas fa-fire fa-2x text-warning mb-2"></i>
-                                <div class="h5 mb-0 text-white">{{ $latestLogs->where('GS', true)->count() }}</div>
+                                <div class="h5 mb-0 text-white" id="quickStatsRunning">{{ $latestLogs->where('GS', true)->count() }}</div>
                                 <small class="text-white-50">Running</small>
                             </div>
                         </div>
                         <div class="col-6">
                             <div class="text-center p-3 rounded" style="background: var(--glass-bg);">
                                 <i class="fas fa-pause fa-2x text-secondary mb-2"></i>
-                                <div class="h5 mb-0 text-white">{{ $latestLogs->where('GS', false)->count() }}</div>
+                                <div class="h5 mb-0 text-white" id="quickStatsStopped">{{ $latestLogs->where('GS', false)->count() }}</div>
                                 <small class="text-white-50">Stopped</small>
                             </div>
                         </div>
                         <div class="col-6">
                             <div class="text-center p-3 rounded" style="background: var(--glass-bg);">
                                 <i class="fas fa-bolt fa-2x text-info mb-2"></i>
-                                <div class="h5 mb-0 text-white">{{ $latestLogs->avg('LI1') ?? 0 }}A</div>
+                                <div class="h5 mb-0 text-white" id="quickStatsCurrent">{{ number_format($latestLogs->avg('LI1') ?? 0, 1) }}A</div>
                                 <small class="text-white-50">Avg Current</small>
                             </div>
                         </div>
                         <div class="col-6">
                             <div class="text-center p-3 rounded" style="background: var(--glass-bg);">
                                 <i class="fas fa-wave-square fa-2x text-success mb-2"></i>
-                                <div class="h5 mb-0 text-white">{{ $latestLogs->avg('Lf1') ?? 0 }}Hz</div>
+                                <div class="h5 mb-0 text-white" id="quickStatsFrequency">{{ number_format($latestLogs->avg('Lf1') ?? 0, 3) }}Hz</div>
                                 <small class="text-white-50">Frequency</small>
                             </div>
                         </div>
@@ -571,6 +559,90 @@ input:checked + .slider:before {
     transition: all 0.3s ease;
     transform: translateY(-2px);
     box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+
+/* Device Status Styles */
+.status-active {
+    border-left: 4px solid #28a745 !important;
+}
+
+.status-inactive {
+    border-left: 4px solid #6c757d !important;
+}
+
+.power-on {
+    animation: pulse-green 2s infinite;
+}
+
+.power-off {
+    opacity: 0.6;
+}
+
+@keyframes pulse-green {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+.switch input:disabled + .slider {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Quick Stats Update Animation */
+.quick-stats-updated {
+    animation: quickStatsPulse 0.5s ease-in-out;
+}
+
+@keyframes quickStatsPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); background-color: rgba(0, 255, 0, 0.1); }
+    100% { transform: scale(1); }
+}
+
+/* Universal Dropdown Styling - Works in both Light and Dark Mode */
+.form-select.form-control-modern {
+    background: var(--bs-body-bg) !important;
+    border: 1px solid var(--bs-border-color) !important;
+    color: var(--bs-body-color) !important;
+}
+
+.form-select.form-control-modern:focus {
+    background: var(--bs-body-bg) !important;
+    border-color: var(--bs-primary) !important;
+    box-shadow: 0 0 0 0.2rem rgba(var(--bs-primary-rgb), 0.25) !important;
+}
+
+.form-select.form-control-modern option {
+    background: var(--bs-body-bg) !important;
+    color: var(--bs-body-color) !important;
+}
+
+/* Override browser default dropdown styling */
+select.form-select {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23000' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m1 6 7 7 7-7'/%3e%3c/svg%3e") !important;
+}
+
+/* Dark mode specific overrides */
+[data-bs-theme="dark"] select.form-select {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m1 6 7 7 7-7'/%3e%3c/svg%3e") !important;
+}
+
+[data-bs-theme="dark"] .form-select.form-control-modern {
+    background: rgba(255,255,255,0.1) !important;
+    border: 1px solid rgba(255,255,255,0.2) !important;
+    color: white !important;
+}
+
+[data-bs-theme="dark"] .form-select.form-control-modern:focus {
+    background: rgba(255,255,255,0.15) !important;
+    border-color: rgba(255,255,255,0.3) !important;
+    box-shadow: 0 0 0 0.2rem rgba(255,255,255,0.1) !important;
+}
+
+[data-bs-theme="dark"] .form-select.form-control-modern option {
+    background: #2d3748 !important;
+    color: white !important;
 }
 
 .generator-item {
@@ -909,14 +981,28 @@ input:checked + .slider:before {
                     if (status.power) {
                         statusCard.removeClass('status-offline').addClass('status-online');
                         statusText.text('OPERATIONAL');
-                        onlineGenerators.text('1');
+                        onlineGenerators.text(status.active_generators || '1');
                     } else {
                         statusCard.removeClass('status-online').addClass('status-offline');
                         statusText.text('OFFLINE');
                         onlineGenerators.text('0');
                     }
 
-                    lastUpdated.text(new Date(status.last_updated).toLocaleTimeString());
+                    if (status.last_updated) {
+                        lastUpdated.text(new Date(status.last_updated).toLocaleTimeString());
+                    }
+
+                    // Update individual generator statuses
+                    if (status.generator_statuses) {
+                        updateGeneratorStatuses(status.generator_statuses);
+                    }
+                }
+            });
+
+            // Refresh quick stats
+            $.get('/api/generator/quick-stats', function(response) {
+                if (response.success && response.data) {
+                    updateQuickStats(response.data);
                 }
             }).always(function() {
                 // Reset button state
@@ -1026,6 +1112,65 @@ input:checked + .slider:before {
             });
         }, 1000);
         });
+
+    // Update individual generator statuses
+    function updateGeneratorStatuses(generatorStatuses) {
+        generatorStatuses.forEach(function(status) {
+            const generatorId = status.generator_id;
+            const isActive = status.is_active;
+            const powerStatus = status.power_status;
+            
+            // Update status indicator
+            const statusIndicator = $(`#status-${generatorId}`);
+            const statusIcon = statusIndicator.find('i');
+            
+            if (isActive) {
+                statusIcon.removeClass('text-danger').addClass('text-success');
+                statusIndicator.removeClass('power-off').addClass('power-on');
+            } else {
+                statusIcon.removeClass('text-success').addClass('text-danger');
+                statusIndicator.removeClass('power-on').addClass('power-off');
+            }
+            
+            // Update power toggle
+            const powerToggle = $(`#toggle-${generatorId}`);
+            powerToggle.prop('checked', powerStatus);
+            powerToggle.prop('disabled', !isActive);
+            
+            // Update generator card border
+            const generatorCard = powerToggle.closest('.generator-control-card');
+            generatorCard.removeClass('status-active status-inactive');
+            generatorCard.addClass(isActive ? 'status-active' : 'status-inactive');
+            
+            // Update status badge
+            const statusBadge = generatorCard.find('.badge').last();
+            statusBadge.removeClass('badge-success badge-secondary');
+            statusBadge.addClass(isActive ? 'badge-success' : 'badge-secondary');
+            statusBadge.text(isActive ? 'ACTIVE' : 'INACTIVE');
+            
+            // Update power text
+            const powerText = generatorCard.find('.power-toggle-switch small');
+            powerText.text(powerStatus ? 'POWER ON' : 'POWER OFF');
+        });
+    }
+
+    // Update quick stats
+    function updateQuickStats(data) {
+        $('#quickStatsRunning').text(data.running);
+        $('#quickStatsStopped').text(data.stopped);
+        $('#quickStatsCurrent').text(data.avg_current + 'A');
+        $('#quickStatsFrequency').text(data.avg_frequency + 'Hz');
+        
+        // Add visual feedback for updates
+        $('.quick-stats-updated').removeClass('quick-stats-updated');
+        $('#quickStatsRunning, #quickStatsStopped, #quickStatsCurrent, #quickStatsFrequency')
+            .addClass('quick-stats-updated');
+        
+        // Remove the visual feedback after animation
+        setTimeout(function() {
+            $('.quick-stats-updated').removeClass('quick-stats-updated');
+        }, 1000);
+    }
 
     // Power Control Functions
     function loadPowerStatus() {
@@ -1215,6 +1360,26 @@ input:checked + .slider:before {
 
         // Refresh runtime data every 30 seconds
         setInterval(loadRuntimeData, 30000);
+
+        // Refresh quick stats every 15 seconds for more frequent updates
+        setInterval(function() {
+            $.get('/api/generator/quick-stats', function(response) {
+                if (response.success && response.data) {
+                    updateQuickStats(response.data);
+                }
+            });
+        }, 15000);
+
+        // Runtime generator filter change handler
+        $('#runtimeGeneratorFilter').on('change', function() {
+            const generatorId = $(this).val();
+            
+            if (generatorId) {
+                loadGeneratorRuntime(generatorId, 'today');
+            } else {
+                showRuntimePlaceholder();
+            }
+        });
     });
 
     // Alert checking function
@@ -1235,6 +1400,105 @@ input:checked + .slider:before {
         });
     }
 
+    // Load generator runtime data
+    function loadGeneratorRuntime(generatorId, period) {
+        $.get('/api/generator/runtime', {
+            generator_id: generatorId,
+            period: period
+        }, function(response) {
+            if (response.success && response.data) {
+                displayGeneratorRuntime(response.data);
+            } else {
+                showRuntimeError(response.message || 'Failed to load runtime data');
+            }
+        }).fail(function() {
+            showRuntimeError('Failed to load runtime data');
+        });
+    }
+
+    // Display generator runtime data
+    function displayGeneratorRuntime(data) {
+        const container = $('#runtimeTrackingContent');
+        const generator = data.generator;
+        const runtime = data.runtime;
+        
+        const statusClass = generator.is_active ? 'badge-success' : 'badge-secondary';
+        const statusText = generator.is_active ? 'Active' : 'Inactive';
+        const statusIcon = generator.is_active ? 'text-success' : 'text-danger';
+        
+        const html = `
+            <div class="runtime-card p-4 rounded" style="background: var(--glass-bg); border: 1px solid rgba(255,255,255,0.1);">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <h5 class="mb-1 text-white">${generator.sitename || 'Generator ' + generator.id} ${generator.id}</h5>
+                        <div class="mt-1">
+                            <span class="badge badge-info-modern badge-modern">${generator.kva_power ? generator.kva_power + 'kVA' : 'N/A'}</span>
+                            <span class="badge ${statusClass} ms-2">${statusText}</span>
+                        </div>
+                    </div>
+                    <div class="runtime-status">
+                        <i class="fas fa-circle ${statusIcon}"></i>
+                    </div>
+                </div>
+                <div class="runtime-stats">
+                    <div class="d-flex justify-content-between mb-2">
+                        <small class="text-white-50">Current Runtime:</small>
+                        <small class="text-white fw-bold">${runtime.current}</small>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <small class="text-white-50">Today:</small>
+                        <small class="text-white fw-bold">${runtime.today}</small>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <small class="text-white-50">This Week:</small>
+                        <small class="text-white fw-bold">${runtime.week}</small>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <small class="text-white-50">This Month:</small>
+                        <small class="text-white fw-bold">${runtime.month}</small>
+                    </div>
+                </div>
+                ${data.last_updated ? `
+                    <div class="mt-3 pt-3 border-top border-secondary">
+                        <small class="text-white-50">
+                            <i class="fas fa-clock me-1"></i>
+                            Last updated: ${new Date(data.last_updated).toLocaleString()}
+                        </small>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+        
+        container.html(html);
+    }
+
+    // Show runtime placeholder
+    function showRuntimePlaceholder() {
+        const container = $('#runtimeTrackingContent');
+        container.html(`
+            <div class="text-center py-5">
+                <i class="fas fa-arrow-up fa-2x text-muted mb-3"></i>
+                <h6 class="text-muted">Select a generator to view runtime data</h6>
+                <p class="text-muted small">Choose a generator from the dropdown above to see detailed runtime statistics</p>
+            </div>
+        `);
+    }
+
+    // Show runtime error
+    function showRuntimeError(message) {
+        const container = $('#runtimeTrackingContent');
+        container.html(`
+            <div class="text-center py-5">
+                <i class="fas fa-exclamation-triangle fa-2x text-warning mb-3"></i>
+                <h6 class="text-warning">Error Loading Runtime Data</h6>
+                <p class="text-muted small">${message}</p>
+                <button class="btn btn-sm btn-outline-light mt-2" onclick="location.reload()">
+                    <i class="fas fa-refresh me-1"></i>Retry
+                </button>
+            </div>
+        `);
+    }
+
     // Runtime tracking functions
     function loadRuntimeData() {
         $.get('/api/runtime/summary', function(response) {
@@ -1250,7 +1514,7 @@ input:checked + .slider:before {
                 updateRuntimeCards(response.data);
             }
         }).fail(function() {
-            console.error('Failed to load running generators');
+console.error('Failed to load running generators');
         });
     }
 
