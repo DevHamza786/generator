@@ -15,16 +15,42 @@ class RuntimeTrackingService
      */
     public function processLogs()
     {
-        // Get latest logs for all generators
-        $latestLogs = GeneratorLog::select('generator_id', 'client_id', 'sitename', 'LV1', 'LV2', 'LV3', 'log_timestamp')
-            ->whereIn('id', function($query) {
-                $query->selectRaw('MAX(id)')
-                    ->from('generator_logs')
-                    ->groupBy('generator_id');
-            })
+        // Get all generators that have logs
+        $generators = GeneratorLog::select('generator_id')
+            ->distinct()
             ->get();
 
-        foreach ($latestLogs as $log) {
+        foreach ($generators as $gen) {
+            $this->processGeneratorLogsChronologically($gen->generator_id);
+        }
+    }
+
+    /**
+     * Process logs for a specific generator chronologically
+     */
+    private function processGeneratorLogsChronologically($generatorId)
+    {
+        // Get the last processed log timestamp for this generator
+        $lastProcessed = GeneratorRuntime::where('generator_id', $generatorId)
+            ->latest('start_time')
+            ->value('start_time');
+
+        // Get unprocessed logs (logs after the last processed runtime)
+        $query = GeneratorLog::where('generator_id', $generatorId)
+            ->orderBy('log_timestamp');
+
+        if ($lastProcessed) {
+            $query->where('log_timestamp', '>', $lastProcessed);
+        }
+
+        $unprocessedLogs = $query->get(['generator_id', 'client_id', 'sitename', 'LV1', 'LV2', 'LV3', 'log_timestamp']);
+
+        if ($unprocessedLogs->isEmpty()) {
+            return;
+        }
+
+        // Process logs in chronological order
+        foreach ($unprocessedLogs as $log) {
             $this->processGeneratorRuntime($log);
         }
     }
@@ -179,17 +205,36 @@ class RuntimeTrackingService
     /**
      * Format duration in seconds to readable format
      */
-    private function formatDuration($seconds)
+    public function formatDuration($seconds)
     {
         if (!$seconds) {
-            return '00:00:00';
+            return '0 hours';
         }
 
-        $hours = floor($seconds / 3600);
+        $days = floor($seconds / 86400);
+        $hours = floor(($seconds % 86400) / 3600);
         $minutes = floor(($seconds % 3600) / 60);
-        $seconds = $seconds % 60;
 
-        return sprintf('%02d:%02d:%02d', $hours, $minutes, $seconds);
+        $result = '';
+
+        if ($days > 0) {
+            $result .= $days . ' day' . ($days > 1 ? 's' : '') . ' ';
+        }
+
+        if ($hours > 0) {
+            $result .= $hours . ' hour' . ($hours > 1 ? 's' : '') . ' ';
+        }
+
+        if ($minutes > 0) {
+            $result .= $minutes . ' minute' . ($minutes > 1 ? 's' : '') . ' ';
+        }
+
+        // If all are zero, show at least minutes
+        if (empty(trim($result))) {
+            $result = 'Less than 1 minute';
+        }
+
+        return trim($result);
     }
 
     /**

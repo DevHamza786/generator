@@ -33,6 +33,13 @@ class Kernel extends ConsoleKernel
                  ->withoutOverlapping()
                  ->appendOutputTo(storage_path('logs/alerts.log'));
 
+        // Runtime tracking - process generator logs and track runtime based on voltage
+        // Runs every minute to ensure accurate runtime tracking
+        $schedule->command('runtime:process')
+                 ->everyMinute()
+                 ->withoutOverlapping()
+                 ->appendOutputTo(storage_path('logs/runtime-tracking.log'));
+
         // Optional: Add email notification for cleanup results
         // Uncomment the line below if you want email notifications
         // ->emailOutputTo('admin@yourdomain.com');

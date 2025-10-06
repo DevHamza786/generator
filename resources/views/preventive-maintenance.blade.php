@@ -175,7 +175,10 @@
 
                     <!-- Runtime Statistics -->
                     <div class="mb-3">
-                        <h6 class="text-white mb-2">Runtime Statistics (30 days)</h6>
+                        <h6 class="text-white mb-2">
+                            <i class="fas fa-history me-2"></i>
+                            Past 30 Days Runtime History
+                        </h6>
                         <div class="d-flex justify-content-between align-items-center mb-1">
                             <small class="text-white-50">Total Sessions:</small>
                             <span class="text-white">{{ $data['runtime_stats']['total_sessions'] }}</span>
@@ -188,19 +191,41 @@
                             <small class="text-white-50">Average Session:</small>
                             <span class="text-white">{{ $data['runtime_stats']['average_duration_formatted'] }}</span>
                         </div>
+                        <div class="mt-2">
+                            <small class="text-warning">
+                                <i class="fas fa-info-circle me-1"></i>
+                                This shows historical data, not current status
+                            </small>
+                        </div>
                     </div>
 
                     <!-- Current Runtime -->
                     @if($data['current_runtime'])
                     <div class="mb-3">
-                        <h6 class="text-white mb-2">Current Runtime</h6>
+                        <h6 class="text-white mb-2">
+                            <i class="fas fa-play-circle me-2 text-success"></i>
+                            Currently Running
+                        </h6>
                         <div class="d-flex justify-content-between align-items-center mb-1">
                             <small class="text-white-50">Started:</small>
                             <span class="text-white">{{ $data['current_runtime']->start_time->format('M d, H:i') }}</span>
                         </div>
                         <div class="d-flex justify-content-between align-items-center mb-1">
                             <small class="text-white-50">Duration:</small>
-                            <span class="text-white">{{ $data['current_runtime']->start_time->diffForHumans(null, true) }}</span>
+                            <span class="text-success fw-bold">{{ $data['current_runtime']->start_time->diffForHumans(null, true) }}</span>
+                        </div>
+                    </div>
+                    @else
+                    <div class="mb-3">
+                        <h6 class="text-white mb-2">
+                            <i class="fas fa-stop-circle me-2 text-danger"></i>
+                            Currently Stopped
+                        </h6>
+                        <div class="text-center py-2">
+                            <span class="text-white-50">
+                                <i class="fas fa-power-off me-1"></i>
+                                Generator is not running
+                            </span>
                         </div>
                     </div>
                     @endif
@@ -253,9 +278,6 @@
                         <button class="btn btn-sm btn-outline-primary flex-fill" onclick="viewGeneratorDetails('{{ $data['generator']->generator_id }}')">
                             <i class="fas fa-eye me-1"></i>View Details
                         </button>
-                        <button class="btn btn-sm btn-outline-success flex-fill" onclick="scheduleMaintenance('{{ $data['generator']->generator_id }}')">
-                            <i class="fas fa-calendar-plus me-1"></i>Schedule
-                        </button>
                     </div>
                 </div>
             </div>
@@ -300,11 +322,6 @@ function refreshMaintenanceData() {
 function viewGeneratorDetails(generatorId) {
     // This would open a modal or navigate to detailed view
     showNotification('Viewing details for generator ' + generatorId, 'info');
-}
-
-function scheduleMaintenance(generatorId) {
-    // This would open a scheduling modal
-    showNotification('Opening maintenance scheduler for generator ' + generatorId, 'info');
 }
 
 function showNotification(message, type = 'info') {

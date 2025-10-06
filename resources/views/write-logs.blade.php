@@ -359,7 +359,7 @@
                                 @if($writeLogs->count() > 0)
                                     @foreach($writeLogs as $writeLog)
                                     <tr>
-                                        <td class="text-white-50">{{ $writeLog->write_timestamp->format('Y-m-d H:i:s') }}</td>
+                                        <td class="text-white-50">{{ $writeLog->write_timestamp->format('M-d g:i A') }}</td>
                                         <td>
                                             <span class="badge badge-primary-modern badge-modern">{{ $writeLog->client->display_name ?? $writeLog->client->client_id ?? $writeLog->client ?? 'Unknown' }}</span>
                                         </td>

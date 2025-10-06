@@ -369,7 +369,7 @@
                                 @if($logs->count() > 0)
                                     @foreach($logs as $log)
                                     <tr>
-                                        <td class="text-white-50">{{ $log->log_timestamp->format('Y-m-d H:i:s') }}</td>
+                                        <td class="text-white-50">{{ $log->log_timestamp->format('M-d g:i A') }}</td>
                                         <td>
                                             <span class="badge badge-primary-modern badge-modern">{{ $log->client->display_name ?? $log->client->client_id ?? $log->client ?? 'Unknown' }}</span>
                                         </td>

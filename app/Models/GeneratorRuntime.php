@@ -78,7 +78,7 @@ class GeneratorRuntime extends Model
     public function calculateDuration()
     {
         if ($this->end_time && $this->start_time) {
-            $this->duration_seconds = $this->end_time->diffInSeconds($this->start_time);
+            $this->duration_seconds = $this->start_time->diffInSeconds($this->end_time);
             $this->save();
         }
         return $this->duration_seconds;
@@ -93,15 +93,30 @@ class GeneratorRuntime extends Model
             return 'N/A';
         }
 
-        $hours = floor($this->duration_seconds / 3600);
+        $days = floor($this->duration_seconds / 86400);
+        $hours = floor(($this->duration_seconds % 86400) / 3600);
         $minutes = floor(($this->duration_seconds % 3600) / 60);
-        $seconds = $this->duration_seconds % 60;
+
+        $result = '';
+
+        if ($days > 0) {
+            $result .= $days . ' day' . ($days > 1 ? 's' : '') . ' ';
+        }
 
         if ($hours > 0) {
-            return sprintf('%02d:%02d:%02d', $hours, $minutes, $seconds);
-        } else {
-            return sprintf('%02d:%02d', $minutes, $seconds);
+            $result .= $hours . ' hour' . ($hours > 1 ? 's' : '') . ' ';
         }
+
+        if ($minutes > 0) {
+            $result .= $minutes . ' minute' . ($minutes > 1 ? 's' : '') . ' ';
+        }
+
+        // If all are zero, show at least minutes
+        if (empty(trim($result))) {
+            $result = 'Less than 1 minute';
+        }
+
+        return trim($result);
     }
 
     /**

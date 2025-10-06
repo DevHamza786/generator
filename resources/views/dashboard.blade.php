@@ -28,7 +28,7 @@
                     <div class="position-relative">
                         <button class="btn btn-outline-light btn-sm" onclick="showAlertDetails()" title="View Alerts">
                             <i class="fas fa-bell"></i>
-                            <span class="badge bg-danger position-absolute top-0 start-100 translate-middle" 
+                            <span class="badge bg-danger position-absolute top-0 start-100 translate-middle"
                                   id="notificationBadge" style="display: none; font-size: 0.7rem;">0</span>
                         </button>
                     </div>
@@ -404,7 +404,7 @@
                                 <tbody>
                                 @foreach($latestLogs->take(10) as $log)
                                 <tr>
-                                    <td class="text-white-50">{{ $log->log_timestamp->format('M-d H:i:s') }}</td>
+                                    <td class="text-white-50">{{ $log->log_timestamp->format('M-d g:i A') }}</td>
                                     <td>
                                         <span class="badge badge-info-modern badge-modern">{{ $log->generator_id }}</span>
                                     </td>
@@ -473,7 +473,7 @@
                                 <tbody>
                                 @foreach($latestWriteLogs->take(10) as $writeLog)
                                 <tr>
-                                    <td class="text-white-50">{{ $writeLog->write_timestamp->format('M-d H:i:s') }}</td>
+                                    <td class="text-white-50">{{ $writeLog->write_timestamp->format('M-d g:i A') }}</td>
                                     <td>
                                         <span class="badge badge-info-modern badge-modern">{{ $writeLog->generator_id }}</span>
                                     </td>
@@ -1027,7 +1027,7 @@ select.form-select {
                     response.data.slice(0, 10).forEach(function(log) {
                         const row = `
                             <tr>
-                                <td class="text-white-50">${new Date(log.log_timestamp).toLocaleDateString('en-US', {month: 'short', day: 'numeric'})} ${new Date(log.log_timestamp).toLocaleTimeString('en-US', {hour12: false})}</td>
+                                <td class="text-white-50">${new Date(log.log_timestamp).toLocaleDateString('en-US', {month: 'short', day: 'numeric'})} ${new Date(log.log_timestamp).toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit', hour12: true})}</td>
                                 <td><span class="badge badge-info-modern badge-modern">${log.generator_id}</span></td>
                                 <td class="text-white">${log.FL}%</td>
                                 <td class="text-white">${log.BV}V</td>
@@ -1061,7 +1061,7 @@ select.form-select {
                     response.data.slice(0, 10).forEach(function(writeLog) {
                         const row = `
                             <tr>
-                                <td class="text-white-50">${new Date(writeLog.write_timestamp).toLocaleDateString('en-US', {month: 'short', day: 'numeric'})} ${new Date(writeLog.write_timestamp).toLocaleTimeString('en-US', {hour12: false})}</td>
+                                <td class="text-white-50">${new Date(writeLog.write_timestamp).toLocaleDateString('en-US', {month: 'short', day: 'numeric'})} ${new Date(writeLog.write_timestamp).toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit', hour12: true})}</td>
                                 <td><span class="badge badge-info-modern badge-modern">${writeLog.generator_id}</span></td>
                                 <td class="text-white">${writeLog.FL}%</td>
                                 <td class="text-white">${writeLog.BV}V</td>
@@ -1127,11 +1127,11 @@ select.form-select {
             const generatorId = status.generator_id;
             const isActive = status.is_active;
             const powerStatus = status.power_status;
-            
+
             // Update status indicator
             const statusIndicator = $(`#status-${generatorId}`);
             const statusIcon = statusIndicator.find('i');
-            
+
             if (isActive) {
                 statusIcon.removeClass('text-danger').addClass('text-success');
                 statusIndicator.removeClass('power-off').addClass('power-on');
@@ -1139,23 +1139,23 @@ select.form-select {
                 statusIcon.removeClass('text-success').addClass('text-danger');
                 statusIndicator.removeClass('power-on').addClass('power-off');
             }
-            
+
             // Update power toggle
             const powerToggle = $(`#toggle-${generatorId}`);
             powerToggle.prop('checked', powerStatus);
             powerToggle.prop('disabled', !isActive);
-            
+
             // Update generator card border
             const generatorCard = powerToggle.closest('.generator-control-card');
             generatorCard.removeClass('status-active status-inactive');
             generatorCard.addClass(isActive ? 'status-active' : 'status-inactive');
-            
+
             // Update status badge
             const statusBadge = generatorCard.find('.badge').last();
             statusBadge.removeClass('badge-success badge-secondary');
             statusBadge.addClass(isActive ? 'badge-success' : 'badge-secondary');
             statusBadge.text(isActive ? 'ACTIVE' : 'INACTIVE');
-            
+
             // Update power text
             const powerText = generatorCard.find('.power-toggle-switch small');
             powerText.text(powerStatus ? 'POWER ON' : 'POWER OFF');
@@ -1168,12 +1168,12 @@ select.form-select {
         $('#quickStatsStopped').text(data.stopped);
         $('#quickStatsCurrent').text(data.avg_current + 'A');
         $('#quickStatsFrequency').text(data.avg_frequency + 'Hz');
-        
+
         // Add visual feedback for updates
         $('.quick-stats-updated').removeClass('quick-stats-updated');
         $('#quickStatsRunning, #quickStatsStopped, #quickStatsCurrent, #quickStatsFrequency')
             .addClass('quick-stats-updated');
-        
+
         // Remove the visual feedback after animation
         setTimeout(function() {
             $('.quick-stats-updated').removeClass('quick-stats-updated');
@@ -1380,14 +1380,14 @@ select.form-select {
 
         // Check for alerts every 30 seconds
         setInterval(checkAlerts, 30000);
-        
+
         // Initial alert check on page load
         checkAlerts();
 
         // Runtime generator filter change handler
         $('#runtimeGeneratorFilter').on('change', function() {
             const generatorId = $(this).val();
-            
+
             if (generatorId) {
                 loadGeneratorRuntime(generatorId, 'today');
             } else {
@@ -1405,7 +1405,7 @@ select.form-select {
                 // Update notification badge if there are active alerts
                 if (response.active_alerts > 0) {
                     $('#notificationBadge').text(response.active_alerts).show();
-                    
+
                     // Show notification for new alerts
                     if (response.active_alerts > 0) {
                         showNotification(`⚠️ ${response.active_alerts} Active Alert${response.active_alerts > 1 ? 's' : ''} Detected!`, 'warning');
@@ -1427,11 +1427,11 @@ select.form-select {
                 response.data.forEach(function(alert) {
                     const severityClass = {
                         'low': 'text-info',
-                        'medium': 'text-warning', 
+                        'medium': 'text-warning',
                         'high': 'text-danger',
                         'critical': 'text-danger fw-bold'
                     }[alert.severity] || 'text-secondary';
-                    
+
                     alertHtml += `
                         <div class="alert-item p-3 mb-2 border rounded" style="background: rgba(255,255,255,0.05);">
                             <div class="d-flex justify-content-between align-items-start">
@@ -1446,7 +1446,7 @@ select.form-select {
                     `;
                 });
                 alertHtml += '</div>';
-                
+
                 showNotification(alertHtml, 'info');
             } else {
                 showNotification('✅ No active alerts', 'success');
@@ -1477,11 +1477,11 @@ select.form-select {
         const container = $('#runtimeTrackingContent');
         const generator = data.generator;
         const runtime = data.runtime;
-        
+
         const statusClass = generator.is_active ? 'badge-success' : 'badge-secondary';
         const statusText = generator.is_active ? 'Active' : 'Inactive';
         const statusIcon = generator.is_active ? 'text-success' : 'text-danger';
-        
+
         const html = `
             <div class="runtime-card p-4 rounded" style="background: var(--glass-bg); border: 1px solid rgba(255,255,255,0.1);">
                 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -1524,7 +1524,7 @@ select.form-select {
                 ` : ''}
             </div>
         `;
-        
+
         container.html(html);
     }
 
