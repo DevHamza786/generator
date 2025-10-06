@@ -17,7 +17,7 @@ class DeleteAxactGeneratorsSeeder extends Seeder
     public function run(): void
     {
         // Define the generator IDs to delete
-        $generatorIds = ['IDabc1234', 'IDabc567', 'IDabc890'];
+        $generatorIds = ['IDabc1234', 'IDabc567', 'IDabc890', 'ID1122334455'];
         
         echo "Starting deletion of Axact generators and their associated data...\n";
         

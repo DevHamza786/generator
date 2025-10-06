@@ -24,7 +24,7 @@ chdir($laravel_root);
 echo "<p>Changed to Laravel root: " . $laravel_root . "</p>";
 
 // Define the generator IDs to delete
-$generatorIds = ['IDabc1234', 'IDabc567', 'IDabc890'];
+$generatorIds = ['IDabc1234', 'IDabc567', 'IDabc890', 'ID1122334455'];
 
 echo "<h3>Generators to Delete:</h3>";
 echo "<ul>";
@@ -54,7 +54,7 @@ if (isset($_GET['confirm']) && $_GET['confirm'] === 'yes') {
     echo "<p>This will delete the following Axact generators and ALL their associated data:</p>";
     echo "<ul>";
     foreach ($generatorIds as $id) {
-        echo "<li><strong>$id</strong> (Axact #100, #101, #102)</li>";
+        echo "<li><strong>$id</strong> (Axact #100, #101, #102, #103)</li>";
     }
     echo "</ul>";
     

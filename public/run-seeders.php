@@ -35,7 +35,7 @@ echo "<p>Changed to Laravel root: " . $laravel_root . "</p>";
 $available_seeders = [
     'AdminUserSeeder' => 'Create admin user',
     'UpdateGeneratorSitenameKvaSeeder' => 'Update generator sitename and KVA',
-    'DeleteAxactGeneratorsSeeder' => 'Delete Axact generators (IDabc1234, IDabc567, IDabc890)',
+    'DeleteAxactGeneratorsSeeder' => 'Delete Axact generators (IDabc1234, IDabc567, IDabc890, ID1122334455)',
     'DatabaseSeeder' => 'Run all seeders'
 ];
 
