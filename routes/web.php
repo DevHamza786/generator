@@ -31,4 +31,10 @@ Route::middleware(['auth'])->group(function () {
 
     // Runtime details routes
     Route::get('/dashboard/runtime-details/{generatorId}', [DashboardController::class, 'getRuntimeDetails'])->name('dashboard.runtime-details');
+
+    // Generator runtime table (hidden from navbar)
+    Route::get('/generator-runtime-table', [DashboardController::class, 'generatorRuntimeTable'])->name('generator-runtime-table');
+    Route::get('/runtime-table-access', function () {
+        return view('runtime-table-access');
+    })->name('runtime-table-access');
 });

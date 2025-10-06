@@ -719,4 +719,43 @@ class DashboardController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Display generator runtime table (hidden from navbar)
+     */
+    public function generatorRuntimeTable()
+    {
+        try {
+            // Get all generators with their runtime data
+            $generators = Generator::with('client')->get();
+            $runtimeData = [];
+
+            foreach ($generators as $generator) {
+                // Get current runtime
+                $currentRuntime = GeneratorRuntime::getCurrentRuntime($generator->generator_id);
+
+                // Get runtime statistics (last 30 days)
+                $runtimeService = app(RuntimeTrackingService::class);
+                $stats = $runtimeService->getRuntimeStats($generator->generator_id, 30);
+
+                // Get recent runtime history (last 10 sessions)
+                $recentRuntimes = GeneratorRuntime::where('generator_id', $generator->generator_id)
+                    ->orderBy('start_time', 'desc')
+                    ->limit(10)
+                    ->get();
+
+                $runtimeData[] = [
+                    'generator' => $generator,
+                    'current_runtime' => $currentRuntime,
+                    'statistics' => $stats,
+                    'recent_runtimes' => $recentRuntimes
+                ];
+            }
+
+            return view('generator-runtime-table', compact('runtimeData'));
+
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Error loading runtime data: ' . $e->getMessage());
+        }
+    }
 }
