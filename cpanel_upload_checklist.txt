@@ -1,0 +1,56 @@
+CPANEL TIMEZONE FIX - UPLOAD CHECKLIST
+========================================
+
+FILES TO UPLOAD TO CPANEL:
+==========================
+
+1. public/fix-timezone.php
+   → Upload to: public_html/your-project/public/fix-timezone.php
+
+2. public/run-seeders.php  
+   → Upload to: public_html/your-project/public/run-seeders.php
+
+3. database/seeders/FixTimezoneSeeder.php
+   → Upload to: public_html/your-project/database/seeders/FixTimezoneSeeder.php
+
+4. config/app.php
+   → Upload to: public_html/your-project/config/app.php
+
+5. app/Http/Controllers/Api/GeneratorController.php
+   → Upload to: public_html/your-project/app/Http/Controllers/Api/GeneratorController.php
+
+6. resources/views/dashboard.blade.php
+   → Upload to: public_html/your-project/resources/views/dashboard.blade.php
+
+QUICK STEPS:
+============
+
+1. Upload all files above to cPanel
+2. Go to: https://yourdomain.com/fix-timezone.php?password=fix-timezone-123
+3. Click "YES, FIX TIMEZONE"
+4. Wait for completion
+5. Delete the PHP scripts for security
+6. Check dashboard - should show date + time
+
+PASSWORDS TO CHANGE:
+====================
+
+In fix-timezone.php: Change 'fix-timezone-123' to your secure password
+In run-seeders.php: Change 'your-secret-password' to your secure password
+
+WHAT HAPPENS:
+=============
+
+- 289 GeneratorLogs will have 5 hours added
+- 17,105 GeneratorWriteLogs will have 5 hours added  
+- Total: 17,394 records updated from UTC to Pakistan time
+- Dashboard will show date + time format
+- New API data will save in Pakistan timezone
+
+EXAMPLE:
+========
+
+Before: 00:03:50 (UTC)
+After:  Oct-6 05:03:50 (PKT)
+
+STATUS: READY FOR CPANEL DEPLOYMENT

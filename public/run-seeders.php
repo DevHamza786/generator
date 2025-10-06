@@ -38,6 +38,7 @@ $available_seeders = [
     'DeleteAxactGeneratorsSeeder' => 'Delete Axact generators (IDabc1234, IDabc567, IDabc890, ID1122334455)',
     'UpdateTimezoneSeeder' => 'Convert existing timestamps from UTC to Asia/Karachi',
     'FixTimezoneSeeder' => 'Fix timezone by adding 5 hours to all timestamps',
+    'SqliteTimezoneFixSeeder' => 'SQLite-compatible timezone fix (recommended for cPanel)',
     'DatabaseSeeder' => 'Run all seeders'
 ];
 
