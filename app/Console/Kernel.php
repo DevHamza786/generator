@@ -20,9 +20,9 @@ class Kernel extends ConsoleKernel
                  ->appendOutputTo(storage_path('logs/cleanup.log'));
 
         // Device status update - check and update generator statuses
-        // Runs every minute to ensure accurate status tracking
+        // Runs every 15 seconds to ensure accurate status tracking
         $schedule->command('device:update-status')
-                 ->everyMinute()
+                 ->everyFifteenSeconds()
                  ->withoutOverlapping()
                  ->appendOutputTo(storage_path('logs/device-status.log'));
 
@@ -36,13 +36,9 @@ class Kernel extends ConsoleKernel
         // Runtime tracking - process generator logs and track runtime based on voltage
         // Runs every minute to ensure accurate runtime tracking
         $schedule->command('runtime:process')
-                 ->everyMinute()
+                 ->everyFifteenSeconds()
                  ->withoutOverlapping()
                  ->appendOutputTo(storage_path('logs/runtime-tracking.log'));
-
-        // Optional: Add email notification for cleanup results
-        // Uncomment the line below if you want email notifications
-        // ->emailOutputTo('admin@yourdomain.com');
     }
 
     /**

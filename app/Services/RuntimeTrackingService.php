@@ -31,33 +31,56 @@ class RuntimeTrackingService
      */
     private function processGeneratorWriteLogsChronologically($generatorId)
     {
-        // Get the last processed log timestamp for this generator
-        $lastProcessed = GeneratorRuntime::where('generator_id', $generatorId)
-            ->latest('start_time')
-            ->value('start_time');
+        // Get the latest write log for this generator
+        $latestLog = GeneratorWriteLog::where('generator_id', $generatorId)
+            ->latest('write_timestamp')
+            ->first(['generator_id', 'client_id', 'sitename', 'LV1', 'LV2', 'LV3', 'write_timestamp']);
 
-        // Get unprocessed write logs (logs after the last processed runtime)
-        $query = GeneratorWriteLog::where('generator_id', $generatorId)
-            ->orderBy('write_timestamp');
-
-        if ($lastProcessed) {
-            $query->where('write_timestamp', '>', $lastProcessed);
-        }
-
-        $unprocessedLogs = $query->get(['generator_id', 'client_id', 'sitename', 'LV1', 'LV2', 'LV3', 'write_timestamp']);
-
-        if ($unprocessedLogs->isEmpty()) {
+        if (!$latestLog) {
             return;
         }
 
-        // Process logs in chronological order
-        foreach ($unprocessedLogs as $log) {
-            $this->processGeneratorRuntime($log);
+        // Process latest log with proper timestamp handling
+        $this->processGeneratorRuntimeWithTimestamp($latestLog);
+    }
+
+    /**
+     * Process runtime with proper timestamp handling - COMPLETE SINGLE SESSION LOGIC
+     */
+    private function processGeneratorRuntimeWithTimestamp($log)
+    {
+        $generatorId = $log->generator_id;
+        $hasVoltage = $this->hasVoltage($log);
+        $logTimestamp = $log->write_timestamp; // Use actual write log timestamp
+
+        Log::info("Generator {$generatorId} - Processing log with voltage status: " . ($hasVoltage ? 'ON' : 'OFF') . " at actual timestamp: " . $logTimestamp);
+
+        // Get current running session for this generator
+        $currentRuntime = GeneratorRuntime::getCurrentRuntime($generatorId);
+
+        if ($hasVoltage && !$currentRuntime) {
+            // Generator started - create new runtime record with actual write log timestamp
+            $this->startRuntimeWithTimestamp($log, $logTimestamp);
+            Log::info("Generator {$generatorId} STARTED - New session created at actual timestamp: " . $logTimestamp);
+        } elseif (!$hasVoltage && $currentRuntime) {
+            // Generator stopped - end current runtime with actual write log timestamp
+            $this->stopRuntimeWithTimestamp($currentRuntime, $logTimestamp);
+            Log::info("Generator {$generatorId} STOPPED - Session ended at actual timestamp: " . $logTimestamp);
+        } elseif ($hasVoltage && $currentRuntime) {
+            // Generator still running - DO NOT create new session, just log continuation
+            Log::info("Generator {$generatorId} CONTINUING - Session running since " . $currentRuntime->start_time . " - Voltage: {$log->LV1}V, {$log->LV2}V, {$log->LV3}V");
+        } elseif ($hasVoltage && !$currentRuntime) {
+            // CRITICAL: Generator has voltage but no running session - CREATE NEW RUNNING SESSION
+            $this->startRuntimeWithTimestamp($log, $logTimestamp);
+            Log::info("Generator {$generatorId} RESTARTED - New running session created at actual timestamp: " . $logTimestamp);
+        } else {
+            // Generator is off and no session exists (do nothing)
+            Log::info("Generator {$generatorId} OFF - No action needed");
         }
     }
 
     /**
-     * Process runtime for a specific generator
+     * Process runtime for a specific generator (old method - keeping for compatibility)
      */
     private function processGeneratorRuntime($log)
     {
@@ -67,15 +90,26 @@ class RuntimeTrackingService
         // Get current running session for this generator
         $currentRuntime = GeneratorRuntime::getCurrentRuntime($generatorId);
 
+        Log::info("Generator {$generatorId} - Processing log with voltage status: " . ($hasVoltage ? 'ON' : 'OFF') . " at " . $log->write_timestamp);
+
         if ($hasVoltage && !$currentRuntime) {
-            // Generator started - create new runtime record
+            // Generator started - create new runtime record ONLY if no running session exists
             $this->startRuntime($log);
+            Log::info("Generator {$generatorId} STARTED - New session created at " . $log->write_timestamp);
         } elseif (!$hasVoltage && $currentRuntime) {
-            // Generator stopped - end current runtime
+            // Generator stopped - end current runtime ONLY if voltage is actually 0
             $this->stopRuntime($currentRuntime, $log);
+            Log::info("Generator {$generatorId} STOPPED - Session ended at " . $log->write_timestamp);
         } elseif ($hasVoltage && $currentRuntime) {
-            // Generator still running - update if needed
-            $this->updateRunningRuntime($currentRuntime, $log);
+            // Generator still running - DO NOT create new session, just log continuation
+            Log::info("Generator {$generatorId} CONTINUING - Session running since " . $currentRuntime->start_time);
+        } elseif ($hasVoltage && !$currentRuntime) {
+            // Special case: Generator has voltage but no running session (restart after stop)
+            $this->startRuntime($log);
+            Log::info("Generator {$generatorId} RESTARTED - New session created after voltage detected at " . $log->write_timestamp);
+        } else {
+            // Generator is off and no session exists (do nothing)
+            Log::info("Generator {$generatorId} OFF - No action needed");
         }
     }
 
@@ -88,11 +122,82 @@ class RuntimeTrackingService
     }
 
     /**
-     * Start a new runtime session
+     * Start a new runtime session with proper timestamp - SINGLE SESSION LOGIC
+     */
+    private function startRuntimeWithTimestamp($log, $timestamp)
+    {
+        try {
+            // CRITICAL: Check if ANY running session exists for this generator
+            $existingRunningRecord = GeneratorRuntime::where('generator_id', $log->generator_id)
+                ->where('status', 'running')
+                ->first();
+
+            if ($existingRunningRecord) {
+                Log::info("Runtime record already exists and running for generator {$log->generator_id}, skipping duplicate creation");
+                return;
+            }
+
+            // SIMPLIFIED: Only check for running sessions, allow restart after stop
+
+            GeneratorRuntime::create([
+                'generator_id' => $log->generator_id,
+                'client_id' => $log->client_id,
+                'sitename' => $log->sitename,
+                'start_time' => $timestamp, // Use actual write log timestamp
+                'start_voltage_l1' => $log->LV1,
+                'start_voltage_l2' => $log->LV2,
+                'start_voltage_l3' => $log->LV3,
+                'status' => 'running',
+                'maintenance_status' => 'none',
+                'notes' => 'Auto-started based on voltage detection (all voltages > 0)'
+            ]);
+
+            Log::info("Runtime started for generator {$log->generator_id} at actual timestamp: " . $timestamp);
+        } catch (\Exception $e) {
+            Log::error("Failed to start runtime for generator {$log->generator_id}: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Stop a running session with proper timestamp
+     */
+    private function stopRuntimeWithTimestamp($runtime, $timestamp)
+    {
+        try {
+            // Set the end time to the actual write log timestamp
+            $runtime->end_time = $timestamp;
+            $runtime->status = 'stopped';
+            $runtime->calculateDuration();
+            $runtime->save();
+
+            Log::info("Runtime stopped for generator {$runtime->generator_id} at actual timestamp: " . $timestamp . ". Duration: {$runtime->formatted_duration}");
+        } catch (\Exception $e) {
+            Log::error("Failed to stop runtime for generator {$runtime->generator_id}: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Start a new runtime session (old method - keeping for compatibility)
      */
     private function startRuntime($log)
     {
         try {
+            // Check if ANY runtime record exists for this generator (running or stopped)
+            $existingRecord = GeneratorRuntime::where('generator_id', $log->generator_id)
+                ->latest('created_at')
+                ->first();
+
+            if ($existingRecord) {
+                // If existing record is running, don't create duplicate
+                if ($existingRecord->status === 'running') {
+                    Log::info("Runtime record already exists and running for generator {$log->generator_id}, skipping duplicate");
+                    return;
+                }
+
+                // If existing record is stopped, allow new session creation (restart scenario)
+                Log::info("Existing stopped record found for generator {$log->generator_id}, creating new running session");
+            }
+
             GeneratorRuntime::create([
                 'generator_id' => $log->generator_id,
                 'client_id' => $log->client_id,
