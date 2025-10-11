@@ -136,7 +136,6 @@ class GeneratorRuntime extends Model
     {
         return static::where('generator_id', $generatorId)
             ->where('status', 'running')
-            ->whereNull('end_time') // Only get records that don't have an end time
             ->latest('start_time')
             ->first();
     }

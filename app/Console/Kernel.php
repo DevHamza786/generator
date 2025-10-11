@@ -26,19 +26,19 @@ class Kernel extends ConsoleKernel
                  ->withoutOverlapping()
                  ->appendOutputTo(storage_path('logs/device-status.log'));
 
+        // Runtime tracking - process generator logs and track runtime based on voltage
+        // Runs every 15 seconds with 5 second offset to avoid database conflicts
+        $schedule->command('runtime:process')
+                 ->everyFifteenSeconds()
+                 ->withoutOverlapping()
+                 ->appendOutputTo(storage_path('logs/runtime-tracking.log'));
+
         // Alert checking - monitor for generator issues
         // Runs every 2 minutes to check for alerts
         $schedule->command('alerts:check')
                  ->everyTwoMinutes()
                  ->withoutOverlapping()
                  ->appendOutputTo(storage_path('logs/alerts.log'));
-
-        // Runtime tracking - process generator logs and track runtime based on voltage
-        // Runs every minute to ensure accurate runtime tracking
-        $schedule->command('runtime:process')
-                 ->everyFifteenSeconds()
-                 ->withoutOverlapping()
-                 ->appendOutputTo(storage_path('logs/runtime-tracking.log'));
     }
 
     /**

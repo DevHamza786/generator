@@ -8,6 +8,7 @@ use App\Models\GeneratorWriteLog;
 use App\Models\Generator;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
 
 class RuntimeTrackingService
 {
@@ -16,13 +17,24 @@ class RuntimeTrackingService
      */
     public function processLogs()
     {
-        // Get all generators that have write logs (prioritize writelogs for voltage tracking)
-        $generators = GeneratorWriteLog::select('generator_id')
-            ->distinct()
-            ->get();
+        try {
+            // Get all generators that have write logs (prioritize writelogs for voltage tracking)
+            $generators = GeneratorWriteLog::select('generator_id')
+                ->distinct()
+                ->get();
 
-        foreach ($generators as $gen) {
-            $this->processGeneratorWriteLogsChronologically($gen->generator_id);
+            foreach ($generators as $gen) {
+                $this->processGeneratorWriteLogsChronologically($gen->generator_id);
+            }
+        } catch (\Illuminate\Database\QueryException $e) {
+            if (str_contains($e->getMessage(), 'database is locked')) {
+                Log::warning("Database temporarily locked, retrying in 1 second...");
+                sleep(1); // Wait 1 second and retry
+                $this->processLogs(); // Retry once
+            } else {
+                Log::error("Database error in processLogs: " . $e->getMessage());
+                throw $e;
+            }
         }
     }
 
@@ -45,7 +57,8 @@ class RuntimeTrackingService
     }
 
     /**
-     * Process runtime with proper timestamp handling - COMPLETE SINGLE SESSION LOGIC
+     * Process runtime with proper timestamp handling - SINGLE SESSION LOGIC
+     * Based on Excel scenarios: Only create ONE record per session, update until stopped
      */
     private function processGeneratorRuntimeWithTimestamp($log)
     {
@@ -59,24 +72,23 @@ class RuntimeTrackingService
         $currentRuntime = GeneratorRuntime::getCurrentRuntime($generatorId);
 
         if ($hasVoltage && !$currentRuntime) {
-            // Generator started - create new runtime record with actual write log timestamp
+            // Scenario 1: Generator started OR Scenario 3: Generator restarted after being stopped
             $this->startRuntimeWithTimestamp($log, $logTimestamp);
-            Log::info("Generator {$generatorId} STARTED - New session created at actual timestamp: " . $logTimestamp);
+            Log::info("Generator {$generatorId} STARTED/RESTARTED - New session created at actual timestamp: " . $logTimestamp);
         } elseif (!$hasVoltage && $currentRuntime) {
-            // Generator stopped - end current runtime with actual write log timestamp
+            // Scenario 2: Generator stopped - end current runtime (single session)
             $this->stopRuntimeWithTimestamp($currentRuntime, $logTimestamp);
             Log::info("Generator {$generatorId} STOPPED - Session ended at actual timestamp: " . $logTimestamp);
         } elseif ($hasVoltage && $currentRuntime) {
-            // Generator still running - DO NOT create new session, just log continuation
+            // Generator still running - NO ACTION, just log continuation
             Log::info("Generator {$generatorId} CONTINUING - Session running since " . $currentRuntime->start_time . " - Voltage: {$log->LV1}V, {$log->LV2}V, {$log->LV3}V");
-        } elseif ($hasVoltage && !$currentRuntime) {
-            // CRITICAL: Generator has voltage but no running session - CREATE NEW RUNNING SESSION
-            $this->startRuntimeWithTimestamp($log, $logTimestamp);
-            Log::info("Generator {$generatorId} RESTARTED - New running session created at actual timestamp: " . $logTimestamp);
-        } else {
-            // Generator is off and no session exists (do nothing)
+        } elseif (!$hasVoltage && !$currentRuntime) {
+            // Generator is off and no session exists - NO ACTION
             Log::info("Generator {$generatorId} OFF - No action needed");
         }
+        
+        // This ensures we only create ONE record per session until it's stopped
+        // Scenario 3 (restart) is handled by the same logic as Scenario 1 (start)
     }
 
     /**
@@ -123,36 +135,40 @@ class RuntimeTrackingService
 
     /**
      * Start a new runtime session with proper timestamp - SINGLE SESSION LOGIC
+     * Based on Excel scenarios: Only create ONE record per session
      */
     private function startRuntimeWithTimestamp($log, $timestamp)
     {
         try {
-            // CRITICAL: Check if ANY running session exists for this generator
-            $existingRunningRecord = GeneratorRuntime::where('generator_id', $log->generator_id)
-                ->where('status', 'running')
-                ->first();
+            // Use database transaction to prevent race conditions
+            \DB::transaction(function () use ($log, $timestamp) {
+                // CRITICAL: Double-check if ANY running session exists for this generator
+                $existingRunningRecord = GeneratorRuntime::where('generator_id', $log->generator_id)
+                    ->where('status', 'running')
+                    ->lockForUpdate() // Lock the row to prevent concurrent access
+                    ->first();
 
-            if ($existingRunningRecord) {
-                Log::info("Runtime record already exists and running for generator {$log->generator_id}, skipping duplicate creation");
-                return;
-            }
+                if ($existingRunningRecord) {
+                    Log::warning("CRITICAL: Runtime record already exists and running for generator {$log->generator_id}, skipping duplicate creation");
+                    return;
+                }
 
-            // SIMPLIFIED: Only check for running sessions, allow restart after stop
+                // Create new runtime record - this should only happen when no running session exists
+                GeneratorRuntime::create([
+                    'generator_id' => $log->generator_id,
+                    'client_id' => $log->client_id,
+                    'sitename' => $log->sitename,
+                    'start_time' => $timestamp, // Use actual write log timestamp
+                    'start_voltage_l1' => $log->LV1,
+                    'start_voltage_l2' => $log->LV2,
+                    'start_voltage_l3' => $log->LV3,
+                    'status' => 'running',
+                    'maintenance_status' => 'none',
+                    'notes' => 'Auto-started based on voltage detection (all voltages > 0)'
+                ]);
 
-            GeneratorRuntime::create([
-                'generator_id' => $log->generator_id,
-                'client_id' => $log->client_id,
-                'sitename' => $log->sitename,
-                'start_time' => $timestamp, // Use actual write log timestamp
-                'start_voltage_l1' => $log->LV1,
-                'start_voltage_l2' => $log->LV2,
-                'start_voltage_l3' => $log->LV3,
-                'status' => 'running',
-                'maintenance_status' => 'none',
-                'notes' => 'Auto-started based on voltage detection (all voltages > 0)'
-            ]);
-
-            Log::info("Runtime started for generator {$log->generator_id} at actual timestamp: " . $timestamp);
+                Log::info("Runtime started for generator {$log->generator_id} at actual timestamp: " . $timestamp);
+            });
         } catch (\Exception $e) {
             Log::error("Failed to start runtime for generator {$log->generator_id}: " . $e->getMessage());
         }
@@ -160,6 +176,7 @@ class RuntimeTrackingService
 
     /**
      * Stop a running session with proper timestamp
+     * Based on Excel Scenario 2: End the current session completely
      */
     private function stopRuntimeWithTimestamp($runtime, $timestamp)
     {
@@ -167,6 +184,9 @@ class RuntimeTrackingService
             // Set the end time to the actual write log timestamp
             $runtime->end_time = $timestamp;
             $runtime->status = 'stopped';
+            $runtime->end_voltage_l1 = 0; // Set end voltages to 0 as per Excel scenario
+            $runtime->end_voltage_l2 = 0;
+            $runtime->end_voltage_l3 = 0;
             $runtime->calculateDuration();
             $runtime->save();
 
@@ -307,26 +327,31 @@ class RuntimeTrackingService
     }
 
     /**
-     * Get runtime summary for dashboard
+     * Get runtime summary for dashboard (optimized with caching)
      */
     public function getDashboardSummary()
     {
-        $runningCount = GeneratorRuntime::running()->count();
-        $totalToday = GeneratorRuntime::whereDate('start_time', today())
-            ->stopped()
-            ->sum('duration_seconds');
+        return Cache::remember('dashboard_summary', 30, function () {
+            // Optimized queries with single database hits
+            $runningCount = GeneratorRuntime::where('status', 'running')->count();
+            
+            // Combined query for today and week totals
+            $today = now()->startOfDay();
+            $weekStart = now()->startOfWeek();
+            
+            $totals = GeneratorRuntime::selectRaw('
+                SUM(CASE WHEN start_time >= ? AND status = "stopped" THEN duration_seconds ELSE 0 END) as today_total,
+                SUM(CASE WHEN start_time >= ? AND status = "stopped" THEN duration_seconds ELSE 0 END) as week_total
+            ', [$today, $weekStart])->first();
 
-        $totalThisWeek = GeneratorRuntime::where('start_time', '>=', now()->startOfWeek())
-            ->stopped()
-            ->sum('duration_seconds');
-
-        return [
-            'currently_running' => $runningCount,
-            'total_today_seconds' => $totalToday,
-            'total_today_formatted' => $this->formatDuration($totalToday),
-            'total_week_seconds' => $totalThisWeek,
-            'total_week_formatted' => $this->formatDuration($totalThisWeek),
-        ];
+            return [
+                'currently_running' => $runningCount,
+                'total_today_seconds' => $totals->today_total ?? 0,
+                'total_today_formatted' => $this->formatDuration($totals->today_total ?? 0),
+                'total_week_seconds' => $totals->week_total ?? 0,
+                'total_week_formatted' => $this->formatDuration($totals->week_total ?? 0),
+            ];
+        });
     }
 
     /**
@@ -400,5 +425,76 @@ class RuntimeTrackingService
 
         Log::info("Fixed {$fixedCount} corrupted runtime records");
         return $fixedCount;
+    }
+
+    /**
+     * Get current status of all generators for debugging
+     */
+    public function getCurrentGeneratorStatus()
+    {
+        $runningGenerators = GeneratorRuntime::running()->get();
+        $allGenerators = GeneratorWriteLog::select('generator_id')
+            ->distinct()
+            ->get();
+
+        $status = [];
+        foreach ($allGenerators as $gen) {
+            $currentRuntime = GeneratorRuntime::getCurrentRuntime($gen->generator_id);
+            $latestLog = GeneratorWriteLog::where('generator_id', $gen->generator_id)
+                ->latest('write_timestamp')
+                ->first();
+
+            $status[] = [
+                'generator_id' => $gen->generator_id,
+                'has_running_session' => $currentRuntime ? true : false,
+                'session_status' => $currentRuntime ? $currentRuntime->status : 'none',
+                'latest_voltage' => $latestLog ? [
+                    'LV1' => $latestLog->LV1,
+                    'LV2' => $latestLog->LV2,
+                    'LV3' => $latestLog->LV3,
+                    'timestamp' => $latestLog->write_timestamp
+                ] : null,
+                'has_voltage' => $latestLog ? $this->hasVoltage($latestLog) : false
+            ];
+        }
+
+        return $status;
+    }
+
+    /**
+     * Clean up duplicate running records for generators
+     * This ensures only ONE running record exists per generator
+     */
+    public function cleanupDuplicateRunningRecords()
+    {
+        $duplicateCount = 0;
+        
+        // Get all generators that have multiple running records
+        $generatorsWithDuplicates = GeneratorRuntime::select('generator_id')
+            ->where('status', 'running')
+            ->groupBy('generator_id')
+            ->havingRaw('COUNT(*) > 1')
+            ->get();
+
+        foreach ($generatorsWithDuplicates as $gen) {
+            // Get all running records for this generator
+            $runningRecords = GeneratorRuntime::where('generator_id', $gen->generator_id)
+                ->where('status', 'running')
+                ->orderBy('start_time', 'desc')
+                ->get();
+
+            // Keep only the latest one, delete the rest
+            $keepRecord = $runningRecords->first();
+            $toDelete = $runningRecords->skip(1);
+
+            foreach ($toDelete as $record) {
+                Log::warning("Deleting duplicate running record ID {$record->id} for generator {$gen->generator_id}");
+                $record->delete();
+                $duplicateCount++;
+            }
+        }
+
+        Log::info("Cleaned up {$duplicateCount} duplicate running records");
+        return $duplicateCount;
     }
 }

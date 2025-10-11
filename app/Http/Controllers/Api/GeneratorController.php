@@ -10,6 +10,7 @@ use App\Models\GeneratorWriteLog;
 use App\Models\Client;
 use App\Models\Generator;
 use App\Services\DeviceStatusService;
+use Illuminate\Support\Facades\Cache;
 
 class GeneratorController extends Controller
 {
@@ -89,46 +90,63 @@ class GeneratorController extends Controller
     }
 
     /**
-     * Get quick stats data for dashboard
+     * Get quick stats data for dashboard (optimized for performance with caching)
      */
     public function quickStats()
     {
         try {
-            // Get latest logs from the last 5 minutes to ensure we have recent data
-            $cutoffTime = now()->subMinutes(5);
-            
-            $latestLogs = GeneratorLog::where('log_timestamp', '>=', $cutoffTime)
-                ->latest('log_timestamp')
-                ->get();
+            // Cache for 30 seconds to improve performance
+            $stats = Cache::remember('quick_stats', 30, function () {
+                // Optimized query - only get latest write log per generator
+                $latestWriteLogs = GeneratorWriteLog::select('generator_id', 'LV1', 'LV2', 'LV3', 'LI1', 'Lf1', 'write_timestamp')
+                    ->whereIn('id', function($query) {
+                        $query->selectRaw('MAX(id)')
+                              ->from('generator_write_logs')
+                              ->groupBy('generator_id');
+                    })
+                    ->get();
                 
-            $latestWriteLogs = GeneratorWriteLog::where('write_timestamp', '>=', $cutoffTime)
-                ->latest('write_timestamp')
-                ->get();
-            
-            // Combine both log types for comprehensive stats
-            $allLogs = $latestLogs->concat($latestWriteLogs);
-            
-            // Calculate stats
-            $runningCount = $allLogs->where('GS', true)->count();
-            $stoppedCount = $allLogs->where('GS', false)->count();
-            $avgCurrent = $allLogs->avg('LI1') ?? 0;
-            $avgFrequency = $allLogs->avg('Lf1') ?? 0;
-            
-            // Get active generators count (devices with recent data)
-            $activeGenerators = $this->deviceStatusService->getActiveGeneratorsCount(1);
-            $totalGenerators = Generator::count();
+                // Calculate running/stopped based on voltage detection
+                $runningCount = 0;
+                $stoppedCount = 0;
+                $totalCurrent = 0;
+                $totalFrequency = 0;
+                $dataPoints = 0;
+                
+                foreach ($latestWriteLogs as $log) {
+                    $hasVoltage = ($log->LV1 > 0) && ($log->LV2 > 0) && ($log->LV3 > 0);
+                    
+                    if ($hasVoltage) {
+                        $runningCount++;
+                        $totalCurrent += ($log->LI1 ?? 0);
+                        $totalFrequency += ($log->Lf1 ?? 0);
+                        $dataPoints++;
+                    } else {
+                        $stoppedCount++;
+                    }
+                }
+                
+                // Calculate averages
+                $avgCurrent = $dataPoints > 0 ? round($totalCurrent / $dataPoints, 1) : 0;
+                $avgFrequency = $dataPoints > 0 ? round($totalFrequency / $dataPoints, 3) : 0;
+                
+                // Get total generators count (cached)
+                $totalGenerators = Generator::count();
+                
+                return [
+                    'running' => $runningCount,
+                    'stopped' => $stoppedCount,
+                    'avg_current' => $avgCurrent,
+                    'avg_frequency' => $avgFrequency,
+                    'active_generators' => $runningCount, // Use running count as active
+                    'total_generators' => $totalGenerators,
+                    'last_updated' => now()->toISOString()
+                ];
+            });
             
             return response()->json([
                 'success' => true,
-                'data' => [
-                    'running' => $runningCount,
-                    'stopped' => $stoppedCount,
-                    'avg_current' => round($avgCurrent, 1),
-                    'avg_frequency' => round($avgFrequency, 3),
-                    'active_generators' => $activeGenerators,
-                    'total_generators' => $totalGenerators,
-                    'last_updated' => now()->toISOString()
-                ]
+                'data' => $stats
             ], 200);
             
         } catch (\Exception $e) {
@@ -427,13 +445,13 @@ class GeneratorController extends Controller
 
 
     /**
-     * Get runtime data for a specific generator
+     * Get runtime data for a specific generator (optimized for performance)
      */
     public function getGeneratorRuntime(Request $request)
     {
         try {
             $generatorId = $request->input('generator_id');
-            $period = $request->input('period', 'today'); // today, week, month
+            $period = $request->input('period', 'today');
             
             if (!$generatorId) {
                 return response()->json([
@@ -442,67 +460,42 @@ class GeneratorController extends Controller
                 ], 400);
             }
 
-            // Get generator info
-            $generator = Generator::where('generator_id', $generatorId)->first();
-            if (!$generator) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Generator not found'
-                ], 404);
-            }
-
-            // Calculate time ranges based on period
-            $now = now();
-            switch ($period) {
-                case 'today':
-                    $startTime = $now->copy()->startOfDay();
-                    break;
-                case 'week':
-                    $startTime = $now->copy()->startOfWeek();
-                    break;
-                case 'month':
-                    $startTime = $now->copy()->startOfMonth();
-                    break;
-                default:
-                    $startTime = $now->copy()->startOfDay();
-            }
-
-            // Get runtime data from logs
-            $logs = GeneratorLog::where('generator_id', $generatorId)
-                ->where('log_timestamp', '>=', $startTime)
-                ->where('GS', true) // Only running logs
-                ->orderBy('log_timestamp')
-                ->get();
-
-            // Calculate runtime statistics
-            $totalRuntime = 0;
-            $currentRuntime = 0;
-            $isCurrentlyRunning = false;
-            $lastLogTime = null;
-
-            if ($logs->count() > 0) {
-                $lastLogTime = $logs->last()->log_timestamp;
-                $isCurrentlyRunning = $this->deviceStatusService->isDeviceActive($generatorId, 1);
-                
-                // Calculate total runtime (simplified - assuming continuous running)
-                $firstLog = $logs->first();
-                $lastLog = $logs->last();
-                $totalRuntime = $lastLog->log_timestamp->diffInMinutes($firstLog->log_timestamp);
-                
-                // If currently running, add time since last log
-                if ($isCurrentlyRunning) {
-                    $currentRuntime = $now->diffInMinutes($lastLogTime);
+            // Cache for 30 seconds to improve performance
+            $cacheKey = "generator_runtime_{$generatorId}_{$period}";
+            $data = Cache::remember($cacheKey, 30, function () use ($generatorId, $period) {
+                // Get generator info (cached)
+                $generator = Generator::where('generator_id', $generatorId)->first();
+                if (!$generator) {
+                    return null;
                 }
-            }
 
-            // Get additional statistics
-            $todayRuntime = $this->calculateRuntimeForPeriod($generatorId, 'today');
-            $weekRuntime = $this->calculateRuntimeForPeriod($generatorId, 'week');
-            $monthRuntime = $this->calculateRuntimeForPeriod($generatorId, 'month');
+                // Use RuntimeTrackingService (same as preventive maintenance)
+                $runtimeService = app(\App\Services\RuntimeTrackingService::class);
+                
+                // Get current runtime (optimized query)
+                $currentRuntime = \App\Models\GeneratorRuntime::where('generator_id', $generatorId)
+                    ->where('status', 'running')
+                    ->latest('start_time')
+                    ->first();
+                
+                // Get runtime statistics (optimized)
+                $runtimeStats = $runtimeService->getRuntimeStats($generatorId, 30);
+                
+                // Determine if currently running based on runtime record
+                $isCurrentlyRunning = $currentRuntime && $currentRuntime->status === 'running';
+                
+                // Calculate period-based runtime from runtime records (optimized)
+                $todayRuntime = $this->calculateRuntimeFromRecords($generatorId, 'today');
+                $weekRuntime = $this->calculateRuntimeFromRecords($generatorId, 'week');
+                $monthRuntime = $this->calculateRuntimeFromRecords($generatorId, 'month');
+                
+                // Get current runtime duration if running
+                $currentRuntimeDuration = 0;
+                if ($currentRuntime && $currentRuntime->status === 'running') {
+                    $currentRuntimeDuration = $currentRuntime->start_time->diffInMinutes(now());
+                }
 
-            return response()->json([
-                'success' => true,
-                'data' => [
+                return [
                     'generator' => [
                         'id' => $generator->generator_id,
                         'sitename' => $generator->sitename,
@@ -510,20 +503,34 @@ class GeneratorController extends Controller
                         'is_active' => $isCurrentlyRunning
                     ],
                     'runtime' => [
-                        'current' => $this->formatDuration($currentRuntime),
-                        'today' => $this->formatDuration($todayRuntime),
-                        'week' => $this->formatDuration($weekRuntime),
-                        'month' => $this->formatDuration($monthRuntime),
+                        'current' => $isCurrentlyRunning ? $runtimeService->formatDuration($currentRuntimeDuration * 60) : '0m',
+                        'today' => $runtimeService->formatDuration($todayRuntime),
+                        'week' => $runtimeService->formatDuration($weekRuntime),
+                        'month' => $runtimeService->formatDuration($monthRuntime),
                         'total_minutes' => [
-                            'current' => $currentRuntime,
-                            'today' => $todayRuntime,
-                            'week' => $weekRuntime,
-                            'month' => $monthRuntime
+                            'current' => $currentRuntimeDuration,
+                            'today' => $todayRuntime / 60,
+                            'week' => $weekRuntime / 60,
+                            'month' => $monthRuntime / 60
                         ]
                     ],
-                    'last_updated' => $lastLogTime ? $lastLogTime->toISOString() : null,
+                    'runtime_stats' => $runtimeStats,
+                    'current_runtime_record' => $currentRuntime,
+                    'last_updated' => $currentRuntime ? $currentRuntime->updated_at->toISOString() : null,
                     'period' => $period
-                ]
+                ];
+            });
+
+            if ($data === null) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Generator not found'
+                ], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => $data
             ], 200);
 
         } catch (\Exception $e) {
@@ -535,7 +542,49 @@ class GeneratorController extends Controller
     }
 
     /**
-     * Calculate runtime for a specific period
+     * Calculate runtime from runtime records (same logic as preventive maintenance)
+     */
+    private function calculateRuntimeFromRecords($generatorId, $period)
+    {
+        $now = now();
+        switch ($period) {
+            case 'today':
+                $startTime = $now->copy()->startOfDay();
+                break;
+            case 'week':
+                $startTime = $now->copy()->startOfWeek();
+                break;
+            case 'month':
+                $startTime = $now->copy()->startOfMonth();
+                break;
+            default:
+                $startTime = $now->copy()->startOfDay();
+        }
+
+        // Get runtime records for the period (same logic as preventive maintenance)
+        $runtimeRecords = \App\Models\GeneratorRuntime::where('generator_id', $generatorId)
+            ->where('start_time', '>=', $startTime)
+            ->where('status', 'stopped') // Only completed sessions
+            ->get();
+
+        $totalSeconds = 0;
+        foreach ($runtimeRecords as $record) {
+            if ($record->duration_seconds) {
+                $totalSeconds += $record->duration_seconds;
+            }
+        }
+
+        // Add current running session if it started within the period
+        $currentRuntime = \App\Models\GeneratorRuntime::getCurrentRuntime($generatorId);
+        if ($currentRuntime && $currentRuntime->start_time >= $startTime) {
+            $totalSeconds += $currentRuntime->start_time->diffInSeconds(now());
+        }
+
+        return $totalSeconds;
+    }
+
+    /**
+     * Calculate runtime for a specific period (old method - keeping for compatibility)
      */
     private function calculateRuntimeForPeriod($generatorId, $period)
     {

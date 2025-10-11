@@ -140,7 +140,7 @@
     <!-- Main Status Card -->
     <div class="row mb-4">
         <div class="col-12">
-            <div class="status-card {{ $generatorStatus && $generatorStatus->power ? 'status-online' : 'status-offline' }} animate-fadeInUp" style="animation-delay: 0.5s;" id="statusCard">
+            <div class="status-card status-offline animate-fadeInUp" style="animation-delay: 0.5s;" id="statusCard">
                 <div class="card-body p-4">
                     <div class="row align-items-center">
                         <div class="col-md-8">
@@ -150,7 +150,7 @@
                                 </div>
                                 <div class="d-flex flex-column justify-content-center">
                                     <h2 class="mb-2 text-white fw-bold" id="statusText">
-                                        {{ $generatorStatus && $generatorStatus->power ? 'OPERATIONAL' : 'OFFLINE' }}
+                                        OFFLINE
                                     </h2>
                                     <div>
                                         <select class="form-select form-control-modern" id="mainGeneratorFilter" style="width: auto; font-size: 0.9rem;">
@@ -191,9 +191,9 @@
                                     <i class="fas fa-clock fa-2x text-white-50"></i>
                                 </div>
                                 <div class="h5 mb-1 text-white fw-bold" id="lastUpdated">
-                                    {{ $generatorStatus ? $generatorStatus->last_updated->format('H:i:s') : 'N/A' }}
+                                    0m
                                 </div>
-                                <small class="text-white-50">Last Updated</small>
+                                <small class="text-white-50">Total Runtime</small>
                             </div>
                         </div>
                     </div>
@@ -850,35 +850,43 @@ select.form-select {
                 minute: '2-digit'
             });
 
-            // Refresh status
-            $.get('/api/generator/status', function(response) {
-                if (response.success && response.data) {
-                    const status = response.data;
-                    const statusCard = $('#statusCard');
-                    const statusText = $('#statusText');
-                    const lastUpdated = $('#lastUpdated');
-                    const onlineGenerators = $('#onlineGenerators');
-
-                    if (status.power) {
-                        statusCard.removeClass('status-offline').addClass('status-online');
-                        statusText.text('OPERATIONAL');
-                        onlineGenerators.text(status.active_generators || '1');
-                    } else {
-                        statusCard.removeClass('status-online').addClass('status-offline');
-                        statusText.text('OFFLINE');
-                        onlineGenerators.text('0');
+            // Only update status if a generator is selected, otherwise keep default OFFLINE
+            const selectedGeneratorId = $('#mainGeneratorFilter').val();
+            if (selectedGeneratorId) {
+                // Get status for selected generator only
+                $.get('/api/generator/runtime', {
+                    generator_id: selectedGeneratorId,
+                    period: 'today'
+                }, function(response) {
+                    if (response.success && response.data) {
+                        const data = response.data;
+                        const generator = data.generator;
+                        const currentRuntimeRecord = data.current_runtime_record || {};
+                        const statusCard = $('#statusCard');
+                        const statusText = $('#statusText');
+                        const lastUpdated = $('#lastUpdated');
+                        
+                        if (generator.is_active) {
+                            statusCard.removeClass('status-offline').addClass('status-online');
+                            statusText.text('OPERATIONAL');
+                            // Show runtime for selected generator only
+                            if (currentRuntimeRecord.start_time) {
+                                const startTime = new Date(currentRuntimeRecord.start_time);
+                                const now = new Date();
+                                const diffMs = now - startTime;
+                                const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+                                const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                                const runtimeText = diffHours > 0 ? `${diffHours}h ${diffMinutes}m` : `${diffMinutes}m`;
+                                lastUpdated.text(runtimeText);
+                            }
+                        } else {
+                            statusCard.removeClass('status-online').addClass('status-offline');
+                            statusText.text('OFFLINE');
+                            lastUpdated.text('0m');
+                        }
                     }
-
-                    if (status.last_updated) {
-                        lastUpdated.text(new Date(status.last_updated).toLocaleTimeString());
-                    }
-
-                    // Update individual generator statuses
-                    if (status.generator_statuses) {
-                        updateGeneratorStatuses(status.generator_statuses);
-                    }
-                }
-            });
+                });
+            }
 
             // Refresh quick stats
             $.get('/api/generator/quick-stats', function(response) {
@@ -949,8 +957,8 @@ select.form-select {
 
     // Initialize everything when document is ready
     $(document).ready(function() {
-        // Initial data load
-        refreshData();
+        // Lightweight initial load - only essential data
+        loadEssentialData();
 
         // Update time every second (only time, no data refresh)
         setInterval(function() {
@@ -962,6 +970,31 @@ select.form-select {
             });
         }, 1000);
         });
+
+    // Load only essential data for faster initial page load
+    function loadEssentialData() {
+        // Update current time
+        const now = new Date();
+        document.getElementById('currentTime').textContent = now.toLocaleTimeString('en-US', {
+            hour12: false,
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+
+        // Load only quick stats initially (lighter API call)
+        $.get('/api/generator/quick-stats', function(response) {
+            if (response.success && response.data) {
+                updateQuickStats(response.data);
+            }
+        });
+
+        // Load runtime summary (lightweight)
+        $.get('/api/runtime/summary', function(response) {
+            if (response.success) {
+                updateRuntimeSummary(response.data);
+            }
+        });
+    }
 
     // Update individual generator statuses
     function updateGeneratorStatuses(generatorStatuses) {
@@ -1206,31 +1239,67 @@ select.form-select {
             filterLogsTableBySitename('writeLogsTable', selectedSitename);
         });
 
-        // Main generator filter (replaces static Generator ID)
+        // Main generator filter (replaces static Generator ID) - Updated to use voltage-based detection
         $('#mainGeneratorFilter').on('change', function() {
             const selectedGeneratorId = $(this).val();
             if (selectedGeneratorId) {
                 // Find the selected generator data
                 const selectedGenerator = {!! json_encode($generators) !!}.find(g => g.generator_id === selectedGeneratorId);
                 if (selectedGenerator) {
-                    // Find latest log for this generator
-                    const latestLog = {!! json_encode($latestLogs) !!}.find(log => log.generator_id === selectedGeneratorId);
-                    if (latestLog) {
-                        $('#fuelLevel').text(latestLog.FL + '%');
-                        $('#batteryVoltage').text(latestLog.BV + 'V');
-                        $('#lineVoltage').text(latestLog.LV1 + 'V');
+                    // Get real-time data from write logs (same logic as runtime tracking)
+                    $.get('/api/generator/runtime', {
+                        generator_id: selectedGeneratorId,
+                        period: 'today'
+                    }, function(response) {
+                        if (response.success && response.data) {
+                            const data = response.data;
+                            const generator = data.generator;
+                            const runtime = data.runtime;
+                            const currentRuntimeRecord = data.current_runtime_record || {};
+                            
+                            // Update voltage and fuel data from latest write log
+                            const latestWriteLog = {!! json_encode($latestWriteLogs) !!}.find(log => log.generator_id === selectedGeneratorId);
+                            if (latestWriteLog) {
+                                $('#fuelLevel').text(latestWriteLog.FL + '%');
+                                $('#batteryVoltage').text(latestWriteLog.BV + 'V');
+                                $('#lineVoltage').text(latestWriteLog.LV1 + 'V');
+                            }
 
-                        // Update status based on GS field
-                        const statusCard = $('#statusCard');
-                        const statusText = $('#statusText');
-                        if (latestLog.GS) {
-                            statusCard.removeClass('status-offline').addClass('status-online');
-                            statusText.text('OPERATIONAL');
-                        } else {
-                            statusCard.removeClass('status-online').addClass('status-offline');
-                            statusText.text('OFFLINE');
+                            // Update status based on voltage detection (same as runtime tracking)
+                            const statusCard = $('#statusCard');
+                            const statusText = $('#statusText');
+                            const lastUpdated = $('#lastUpdated');
+                            
+                            if (generator.is_active) {
+                                statusCard.removeClass('status-offline').addClass('status-online');
+                                statusText.text('OPERATIONAL');
+                                // Show total running time instead of last updated time
+                                if (currentRuntimeRecord.start_time) {
+                                    const startTime = new Date(currentRuntimeRecord.start_time);
+                                    const now = new Date();
+                                    const diffMs = now - startTime;
+                                    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+                                    const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                                    const runtimeText = diffHours > 0 ? `${diffHours}h ${diffMinutes}m` : `${diffMinutes}m`;
+                                    lastUpdated.text(runtimeText);
+                                    $('small:contains("Last Updated")').text('Total Runtime');
+                                }
+                            } else {
+                                statusCard.removeClass('status-online').addClass('status-offline');
+                                statusText.text('OFFLINE');
+                                lastUpdated.text('0m');
+                                $('small:contains("Last Updated")').text('Total Runtime');
+                            }
                         }
-                    }
+                    }).fail(function() {
+                        // Fallback to old logic if API fails
+                        const latestLog = {!! json_encode($latestLogs) !!}.find(log => log.generator_id === selectedGeneratorId);
+                        if (latestLog) {
+                            $('#fuelLevel').text(latestLog.FL + '%');
+                            $('#batteryVoltage').text(latestLog.BV + 'V');
+                            $('#lineVoltage').text(latestLog.LV1 + 'V');
+                        }
+                    });
                 }
             }
         });
@@ -1245,14 +1314,37 @@ select.form-select {
         // Refresh runtime data every 30 seconds
         setInterval(loadRuntimeData, 30000);
 
-        // Refresh quick stats every 15 seconds for more frequent updates
+        // Refresh quick stats every 30 seconds (reduced frequency for better performance)
         setInterval(function() {
             $.get('/api/generator/quick-stats', function(response) {
                 if (response.success && response.data) {
                     updateQuickStats(response.data);
+                    
+                    // Only update runtime if a generator is selected
+                    const selectedGeneratorId = $('#mainGeneratorFilter').val();
+                    if (selectedGeneratorId && response.data.running > 0) {
+                        $.get('/api/generator/runtime', {
+                            generator_id: selectedGeneratorId,
+                            period: 'today'
+                        }, function(runtimeResponse) {
+                            if (runtimeResponse.success && runtimeResponse.data) {
+                                const data = runtimeResponse.data;
+                                const currentRuntimeRecord = data.current_runtime_record || {};
+                                if (currentRuntimeRecord.start_time) {
+                                    const startTime = new Date(currentRuntimeRecord.start_time);
+                                    const now = new Date();
+                                    const diffMs = now - startTime;
+                                    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+                                    const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                                    const runtimeText = diffHours > 0 ? `${diffHours}h ${diffMinutes}m` : `${diffMinutes}m`;
+                                    $('#lastUpdated').text(runtimeText);
+                                }
+                            }
+                        });
+                    }
                 }
             });
-        }, 15000);
+        }, 30000); // Increased from 15 seconds to 30 seconds
 
         // Check for alerts every 30 seconds
         setInterval(checkAlerts, 30000);
@@ -1260,12 +1352,16 @@ select.form-select {
         // Initial alert check on page load
         checkAlerts();
 
-        // Runtime generator filter change handler
+        // Runtime generator filter change handler (optimized for instant loading)
         $('#runtimeGeneratorFilter').on('change', function() {
             const generatorId = $(this).val();
 
             if (generatorId) {
-                loadGeneratorRuntime(generatorId, 'today');
+                // Show loading state immediately
+                showRuntimeLoading();
+                
+                // Try to load from cache first, then API
+                loadGeneratorRuntimeOptimized(generatorId, 'today');
             } else {
                 showRuntimePlaceholder();
             }
@@ -1332,7 +1428,48 @@ select.form-select {
         });
     }
 
-    // Load generator runtime data
+    // Optimized generator runtime loading with caching and instant display
+    function loadGeneratorRuntimeOptimized(generatorId, period) {
+        // Try to get cached data first (if available)
+        const cacheKey = `runtime_${generatorId}_${period}`;
+        const cachedData = sessionStorage.getItem(cacheKey);
+        
+        if (cachedData) {
+            try {
+                const data = JSON.parse(cachedData);
+                // Check if cache is still valid (less than 30 seconds old)
+                if (data.timestamp && (Date.now() - data.timestamp) < 30000) {
+                    displayGeneratorRuntime(data.data);
+                    return;
+                }
+            } catch (e) {
+                // Invalid cache, continue to API call
+            }
+        }
+        
+        // Load from API
+        $.get('/api/generator/runtime', {
+            generator_id: generatorId,
+            period: period
+        }, function(response) {
+            if (response.success && response.data) {
+                // Cache the response
+                const cacheData = {
+                    data: response.data,
+                    timestamp: Date.now()
+                };
+                sessionStorage.setItem(cacheKey, JSON.stringify(cacheData));
+                
+                displayGeneratorRuntime(response.data);
+            } else {
+                showRuntimeError(response.message || 'Failed to load runtime data');
+            }
+        }).fail(function() {
+            showRuntimeError('Failed to load runtime data');
+        });
+    }
+
+    // Load generator runtime data (original function kept for compatibility)
     function loadGeneratorRuntime(generatorId, period) {
         $.get('/api/generator/runtime', {
             generator_id: generatorId,
@@ -1348,19 +1485,27 @@ select.form-select {
         });
     }
 
-    // Display generator runtime data
+    // Display generator runtime data (enhanced with preventive maintenance logic)
     function displayGeneratorRuntime(data) {
         const container = $('#runtimeTrackingContent');
         const generator = data.generator;
         const runtime = data.runtime;
+        const runtimeStats = data.runtime_stats || {};
+        const currentRuntimeRecord = data.current_runtime_record || {};
 
         const statusClass = generator.is_active ? 'badge-success' : 'badge-secondary';
         const statusText = generator.is_active ? 'Active' : 'Inactive';
         const statusIcon = generator.is_active ? 'text-success' : 'text-danger';
 
+        // Enhanced runtime information
+        const totalSessions = runtimeStats.total_sessions || 0;
+        const avgDuration = runtimeStats.average_duration_formatted || '0 hours';
+        const currentStartTime = currentRuntimeRecord.start_time ? 
+            new Date(currentRuntimeRecord.start_time).toLocaleString() : 'N/A';
+
         const html = `
             <div class="runtime-card p-4 rounded" style="background: var(--glass-bg); border: 1px solid rgba(255,255,255,0.1);">
-                <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="d-flex justify-content-between align-items-start mb-3">
                     <div>
                         <h5 class="mb-1 text-white">${generator.sitename || 'Generator ' + generator.id} ${generator.id}</h5>
                         <div class="mt-1">
@@ -1372,6 +1517,7 @@ select.form-select {
                         <i class="fas fa-circle ${statusIcon}"></i>
                     </div>
                 </div>
+                
                 <div class="runtime-stats">
                     <div class="d-flex justify-content-between mb-2">
                         <small class="text-white-50">Current Runtime:</small>
@@ -1385,11 +1531,33 @@ select.form-select {
                         <small class="text-white-50">This Week:</small>
                         <small class="text-white fw-bold">${runtime.week}</small>
                     </div>
-                    <div class="d-flex justify-content-between">
+                    <div class="d-flex justify-content-between mb-2">
                         <small class="text-white-50">This Month:</small>
                         <small class="text-white fw-bold">${runtime.month}</small>
                     </div>
                 </div>
+
+                ${totalSessions > 0 ? `
+                    <div class="mt-3 pt-3 border-top border-secondary">
+                        <div class="runtime-stats">
+                            <div class="d-flex justify-content-between mb-2">
+                                <small class="text-white-50">Total Sessions (30 days):</small>
+                                <small class="text-white fw-bold">${totalSessions}</small>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <small class="text-white-50">Average Duration:</small>
+                                <small class="text-white fw-bold">${avgDuration}</small>
+                            </div>
+                            ${generator.is_active ? `
+                                <div class="d-flex justify-content-between">
+                                    <small class="text-white-50">Started At:</small>
+                                    <small class="text-white fw-bold">${currentStartTime}</small>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                ` : ''}
+
                 ${data.last_updated ? `
                     <div class="mt-3 pt-3 border-top border-secondary">
                         <small class="text-white-50">
@@ -1402,6 +1570,20 @@ select.form-select {
         `;
 
         container.html(html);
+    }
+
+    // Show runtime loading state
+    function showRuntimeLoading() {
+        const container = $('#runtimeTrackingContent');
+        container.html(`
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary mb-3" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <h6 class="text-white">Loading runtime data...</h6>
+                <p class="text-muted small">Fetching the latest runtime statistics</p>
+            </div>
+        `);
     }
 
     // Show runtime placeholder
@@ -1429,6 +1611,34 @@ select.form-select {
                 </button>
             </div>
         `);
+    }
+
+    // Get total running time for all currently running generators
+    function getTotalRunningTime(callback) {
+        $.get('/api/runtime/running', function(response) {
+            if (response.success && response.data) {
+                let totalMinutes = 0;
+                response.data.forEach(function(runtime) {
+                    if (runtime.start_time) {
+                        const startTime = new Date(runtime.start_time);
+                        const now = new Date();
+                        const diffMs = now - startTime;
+                        const diffMinutes = Math.floor(diffMs / (1000 * 60));
+                        totalMinutes += diffMinutes;
+                    }
+                });
+                
+                // Format total runtime
+                const hours = Math.floor(totalMinutes / 60);
+                const minutes = totalMinutes % 60;
+                const runtimeText = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+                callback(runtimeText);
+            } else {
+                callback('0m');
+            }
+        }).fail(function() {
+            callback('0m');
+        });
     }
 
     // Runtime tracking functions
