@@ -59,6 +59,7 @@ class RuntimeTrackingService
     /**
      * Process runtime with proper timestamp handling - SINGLE SESSION LOGIC
      * Based on Excel scenarios: Only create ONE record per session, update until stopped
+     * FIXED: Added debouncing to prevent multiple entries from voltage fluctuations
      */
     private function processGeneratorRuntimeWithTimestamp($log)
     {
@@ -66,10 +67,41 @@ class RuntimeTrackingService
         $hasVoltage = $this->hasVoltage($log);
         $logTimestamp = $log->write_timestamp; // Use actual write log timestamp
 
-        Log::info("Generator {$generatorId} - Processing log with voltage status: " . ($hasVoltage ? 'ON' : 'OFF') . " at actual timestamp: " . $logTimestamp);
-
         // Get current running session for this generator
         $currentRuntime = GeneratorRuntime::getCurrentRuntime($generatorId);
+
+        // CRITICAL FIX: Check if we already processed this exact log entry recently (within 5 minutes)
+        // BUT only skip if the existing record is in the correct status
+        $existingRecord = GeneratorRuntime::where('generator_id', $generatorId)
+            ->where('start_time', $logTimestamp)
+            ->where('created_at', '>', now()->subMinutes(5))
+            ->first();
+        
+        if ($existingRecord) {
+            // Only skip if the existing record status matches current voltage status
+            $shouldBeRunning = $hasVoltage;
+            $isCurrentlyRunning = ($existingRecord->status === 'running');
+            
+            if ($shouldBeRunning === $isCurrentlyRunning) {
+                Log::info("Generator {$generatorId} - Skipping duplicate log entry - Status already correct at: " . $logTimestamp);
+                return;
+            } else {
+                Log::info("Generator {$generatorId} - Status mismatch detected - Will update existing record");
+            }
+        }
+
+        // DEBOUNCING: Only process if enough time has passed since last update OR if status changed
+        if ($currentRuntime && $currentRuntime->updated_at && $currentRuntime->updated_at->diffInSeconds(now()) < 60) {
+            // Check if voltage+current status actually changed
+            $currentHasVoltage = ($currentRuntime->end_voltage_l1 > 100) || ($currentRuntime->end_voltage_l2 > 100) || ($currentRuntime->end_voltage_l3 > 100);
+            // Note: We can't check current from runtime record, so we'll process if voltage status changed
+            if ($currentHasVoltage === ($log->LV1 > 100 || $log->LV2 > 100 || $log->LV3 > 100)) {
+                Log::info("Generator {$generatorId} - Skipping update (debouncing) - No voltage change - Last update: " . $currentRuntime->updated_at);
+                return;
+            }
+        }
+
+        Log::info("Generator {$generatorId} - Processing log with voltage status: " . ($hasVoltage ? 'ON' : 'OFF') . " at actual timestamp: " . $logTimestamp);
 
         if ($hasVoltage && !$currentRuntime) {
             // Scenario 1: Generator started OR Scenario 3: Generator restarted after being stopped
@@ -80,8 +112,9 @@ class RuntimeTrackingService
             $this->stopRuntimeWithTimestamp($currentRuntime, $logTimestamp);
             Log::info("Generator {$generatorId} STOPPED - Session ended at actual timestamp: " . $logTimestamp);
         } elseif ($hasVoltage && $currentRuntime) {
-            // Generator still running - NO ACTION, just log continuation
-            Log::info("Generator {$generatorId} CONTINUING - Session running since " . $currentRuntime->start_time . " - Voltage: {$log->LV1}V, {$log->LV2}V, {$log->LV3}V");
+            // Generator still running - UPDATE the existing record instead of creating new
+            $this->updateRunningRuntime($currentRuntime, $log, $logTimestamp);
+            Log::info("Generator {$generatorId} CONTINUING - Session updated - Voltage: {$log->LV1}V, {$log->LV2}V, {$log->LV3}V");
         } elseif (!$hasVoltage && !$currentRuntime) {
             // Generator is off and no session exists - NO ACTION
             Log::info("Generator {$generatorId} OFF - No action needed");
@@ -126,11 +159,25 @@ class RuntimeTrackingService
     }
 
     /**
-     * Check if generator has voltage on ALL lines (new requirement)
+     * Check if generator has voltage (generator is active/running)
+     * Fixed: Generator is "running" if ANY voltage > 0, only "stopped" when voltage = 0
      */
     private function hasVoltage($log)
     {
-        return ($log->LV1 > 0) && ($log->LV2 > 0) && ($log->LV3 > 0);
+        // Generator is considered "active/running" if it has ANY voltage above 0
+        // Only "stopped" when voltage is actually 0 (as per user requirement)
+        $hasVoltage = ($log->LV1 > 0) || ($log->LV2 > 0) || ($log->LV3 > 0);
+        
+        // Log detailed info for debugging
+        if ($hasVoltage) {
+            $hasCurrent = ($log->LI1 > 0.1) || ($log->LI2 > 0.1) || ($log->LI3 > 0.1);
+            $mode = $hasCurrent ? 'RUNNING (with load)' : 'STANDBY (voltage but no load)';
+            Log::info("Generator {$log->generator_id} - Generator ACTIVE: {$mode} - V: {$log->LV1}V, {$log->LV2}V, {$log->LV3}V - I: {$log->LI1}A, {$log->LI2}A, {$log->LI3}A");
+        } else {
+            Log::info("Generator {$log->generator_id} - Generator STOPPED (no voltage) - V: {$log->LV1}V, {$log->LV2}V, {$log->LV3}V");
+        }
+        
+        return $hasVoltage;
     }
 
     /**
@@ -171,6 +218,27 @@ class RuntimeTrackingService
             });
         } catch (\Exception $e) {
             Log::error("Failed to start runtime for generator {$log->generator_id}: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Update a running runtime session instead of creating new ones
+     * This prevents multiple entries for the same running session
+     */
+    private function updateRunningRuntime($runtime, $log, $timestamp)
+    {
+        try {
+            // Update the existing running record instead of creating new one
+            $runtime->end_time = $timestamp; // Update end time to current timestamp
+            $runtime->end_voltage_l1 = $log->LV1;
+            $runtime->end_voltage_l2 = $log->LV2;
+            $runtime->end_voltage_l3 = $log->LV3;
+            $runtime->calculateDuration();
+            $runtime->save();
+
+            Log::info("Runtime session {$runtime->id} UPDATED - Still running, duration: " . $runtime->duration_seconds . " seconds");
+        } catch (\Exception $e) {
+            Log::error("Failed to update runtime for generator {$runtime->generator_id}: " . $e->getMessage());
         }
     }
 
@@ -260,14 +328,6 @@ class RuntimeTrackingService
         }
     }
 
-    /**
-     * Update running runtime (for future enhancements)
-     */
-    private function updateRunningRuntime($runtime, $log)
-    {
-        // For now, just log that it's still running
-        // Could add features like updating max voltage, etc.
-    }
 
     /**
      * Get current runtime for a generator

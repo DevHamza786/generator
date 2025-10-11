@@ -80,8 +80,8 @@ class DeviceStatusService
                 $lv2 = $latestWriteLog->LV2 ?? 0;
                 $lv3 = $latestWriteLog->LV3 ?? 0;
 
-                // Generator is ON only if ALL three voltages are greater than zero
-                $powerStatus = ($lv1 > 0 && $lv2 > 0 && $lv3 > 0);
+                // Generator is ON if ANY voltage is greater than zero (as per user requirement)
+                $powerStatus = ($lv1 > 0 || $lv2 > 0 || $lv3 > 0);
                 $lastDataTime = $latestWriteLog->write_timestamp;
             } elseif ($latestLog && $latestLog->log_timestamp >= $cutoffTime) {
                 // Fallback to GS field from general log if write log is not recent
@@ -127,8 +127,8 @@ class DeviceStatusService
             );
         }
 
-        // Handle runtime tracking based on voltage changes
-        $this->handleRuntimeTracking($generatorId, $powerStatus, $latestWriteLog);
+        // Runtime tracking is now handled by RuntimeTrackingService
+        // $this->handleRuntimeTracking($generatorId, $powerStatus, $latestWriteLog);
 
         return $status;
     }
